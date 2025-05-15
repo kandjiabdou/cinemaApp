@@ -1,13 +1,10 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 
-const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: 'admin',
-    database: 'cinema_app',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+const pool = new Pool({
+    connectionString: 'postgresql://postgres:araZxuHA4wBMkBc9@db.jaapsatmokzdmbckokbd.supabase.co:5432/postgres',
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 module.exports = pool;

@@ -58,13 +58,14 @@ app.post('/films', authenticateToken, upload.single('poster'), async (req, res) 
             genres
         } = req.body;
 
+        const filmid = parseInt(req.body.filmid, 10);
         const poster = req.file ? `/uploads/${req.file.filename}` : '/images/default-poster.jpg';
 
-        const [result] = await pool.query(
+        const result = await pool.query(
             `INSERT INTO Film (
                 titre, duree, langue, sous_titres, realisateur,
                 acteurs_principaux, synopsis, age_minimum, genres, poster
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
             [
                 titre, duree, langue, sous_titres, realisateur,
                 acteurs_principaux, synopsis, age_minimum, genres, poster
@@ -73,7 +74,7 @@ app.post('/films', authenticateToken, upload.single('poster'), async (req, res) 
 
         res.status(201).json({
             message: 'Film ajouté avec succès',
-            id: result.insertId
+            id: result.rows[0].id
         });
     } catch (error) {
         console.error('Erreur lors de l\'ajout du film:', error);
@@ -84,7 +85,8 @@ app.post('/films', authenticateToken, upload.single('poster'), async (req, res) 
 // Route pour mettre à jour un film
 app.put('/films/:id', authenticateToken, upload.single('poster'), async (req, res) => {
     try {
-        const filmId = req.params.id;
+        const filmId = parseInt(req.params.id, 10);
+        const filmid = parseInt(req.body.filmid, 10);
         const {
             titre,
             duree,
@@ -106,43 +108,43 @@ app.put('/films/:id', authenticateToken, upload.single('poster'), async (req, re
         const updateValues = [];
 
         if (titre) {
-            updateFields.push('titre = ?');
+            updateFields.push(`titre = $${updateValues.length + 1}`);
             updateValues.push(titre);
         }
         if (duree) {
-            updateFields.push('duree = ?');
+            updateFields.push(`duree = $${updateValues.length + 1}`);
             updateValues.push(duree);
         }
         if (langue) {
-            updateFields.push('langue = ?');
+            updateFields.push(`langue = $${updateValues.length + 1}`);
             updateValues.push(langue);
         }
         if (sous_titres !== undefined) {
-            updateFields.push('sous_titres = ?');
+            updateFields.push(`sous_titres = $${updateValues.length + 1}`);
             updateValues.push(sous_titres);
         }
         if (realisateur) {
-            updateFields.push('realisateur = ?');
+            updateFields.push(`realisateur = $${updateValues.length + 1}`);
             updateValues.push(realisateur);
         }
         if (acteurs_principaux) {
-            updateFields.push('acteurs_principaux = ?');
+            updateFields.push(`acteurs_principaux = $${updateValues.length + 1}`);
             updateValues.push(acteurs_principaux);
         }
         if (synopsis) {
-            updateFields.push('synopsis = ?');
+            updateFields.push(`synopsis = $${updateValues.length + 1}`);
             updateValues.push(synopsis);
         }
         if (age_minimum) {
-            updateFields.push('age_minimum = ?');
+            updateFields.push(`age_minimum = $${updateValues.length + 1}`);
             updateValues.push(age_minimum);
         }
         if (genres) {
-            updateFields.push('genres = ?');
+            updateFields.push(`genres = $${updateValues.length + 1}`);
             updateValues.push(genres);
         }
         if (poster) {
-            updateFields.push('poster = ?');
+            updateFields.push(`poster = $${updateValues.length + 1}`);
             updateValues.push(poster);
         }
 
@@ -152,12 +154,12 @@ app.put('/films/:id', authenticateToken, upload.single('poster'), async (req, re
 
         updateValues.push(filmId);
 
-        const [result] = await pool.query(
-            `UPDATE Film SET ${updateFields.join(', ')} WHERE id = ?`,
+        const result = await pool.query(
+            `UPDATE Film SET ${updateFields.join(', ')} WHERE id = $${updateValues.length} RETURNING id`,
             updateValues
         );
 
-        if (result.affectedRows === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Film non trouvé' });
         }
 
@@ -181,13 +183,13 @@ app.post('/programmations', authenticateToken, async (req, res) => {
             heure_debut
         } = req.body;
 
-        const cinemaid = req.user.id;
+        const cinemaid = parseInt(req.user.id, 10);
 
-        const [result] = await pool.query(
+        const result = await pool.query(
             `INSERT INTO Programmation (
                 filmid, cinemaid, date_debut, date_fin,
                 jour_1, jour_2, jour_3, heure_debut
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
             [
                 filmid, cinemaid, date_debut, date_fin,
                 jour_1, jour_2, jour_3, heure_debut
@@ -196,7 +198,7 @@ app.post('/programmations', authenticateToken, async (req, res) => {
 
         res.status(201).json({
             message: 'Programmation ajoutée avec succès',
-            id: result.insertId
+            id: result.rows[0].id
         });
     } catch (error) {
         console.error('Erreur lors de l\'ajout de la programmation:', error);
@@ -207,7 +209,7 @@ app.post('/programmations', authenticateToken, async (req, res) => {
 // Route pour mettre à jour une programmation
 app.put('/programmations/:id', authenticateToken, async (req, res) => {
     try {
-        const programmationId = req.params.id;
+        const programmationId = parseInt(req.params.id, 10);
         const {
             date_debut,
             date_fin,
@@ -217,11 +219,11 @@ app.put('/programmations/:id', authenticateToken, async (req, res) => {
             heure_debut
         } = req.body;
 
-        const cinemaid = req.user.id;
+        const cinemaid = parseInt(req.user.id, 10);
 
         // Vérifier que la programmation appartient bien au cinéma
-        const [programmations] = await pool.query(
-            'SELECT * FROM Programmation WHERE id = ? AND cinemaid = ?',
+        const { rows: programmations } = await pool.query(
+            'SELECT * FROM Programmation WHERE id = $1 AND cinemaid = $2',
             [programmationId, cinemaid]
         );
 
@@ -229,15 +231,15 @@ app.put('/programmations/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'Programmation non trouvée' });
         }
 
-        const [result] = await pool.query(
+        const result = await pool.query(
             `UPDATE Programmation SET
-                date_debut = ?,
-                date_fin = ?,
-                jour_1 = ?,
-                jour_2 = ?,
-                jour_3 = ?,
-                heure_debut = ?
-            WHERE id = ? AND cinemaid = ?`,
+                date_debut = $1,
+                date_fin = $2,
+                jour_1 = $3,
+                jour_2 = $4,
+                jour_3 = $5,
+                heure_debut = $6
+            WHERE id = $7 AND cinemaid = $8`,
             [
                 date_debut,
                 date_fin,
@@ -260,15 +262,15 @@ app.put('/programmations/:id', authenticateToken, async (req, res) => {
 // Route pour supprimer une programmation
 app.delete('/programmations/:id', authenticateToken, async (req, res) => {
     try {
-        const programmationId = req.params.id;
-        const cinemaid = req.user.id;
+        const programmationId = parseInt(req.params.id, 10);
+        const cinemaid = parseInt(req.user.id, 10);
 
-        const [result] = await pool.query(
-            'DELETE FROM Programmation WHERE id = ? AND cinemaid = ?',
+        const result = await pool.query(
+            'DELETE FROM Programmation WHERE id = $1 AND cinemaid = $2',
             [programmationId, cinemaid]
         );
 
-        if (result.affectedRows === 0) {
+        if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Programmation non trouvée' });
         }
 

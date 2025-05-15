@@ -11,10 +11,18 @@
     "install:all": "npm install && cd shared && npm install && cd ../api-gateway && npm install && cd ../auth-service && npm install && cd ../cinema-service && npm install && cd ../public-service && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["cinema", "microservices", "nodejs", "express"],
+  "keywords": [
+    "cinema",
+    "microservices",
+    "nodejs",
+    "express"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "pg": "^8.16.0"
   }
-} 
+}

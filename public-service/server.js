@@ -13,12 +13,12 @@ app.get('/films/ville/:ville', async (req, res) => {
     try {
         const { ville } = req.params;
 
-        const [films] = await pool.query(
+        const { rows: films } = await pool.query(
             `SELECT DISTINCT f.*, c.nom as cinema_nom, c.adresse, c.ville
             FROM Film f
             JOIN Programmation p ON f.id = p.filmid
             JOIN Cinema c ON p.cinemaid = c.id
-            WHERE c.ville = ?
+            WHERE c.ville = $1
             ORDER BY f.titre`,
             [ville]
         );
@@ -33,11 +33,11 @@ app.get('/films/ville/:ville', async (req, res) => {
 // Route pour obtenir les détails d'un film spécifique
 app.get('/films/:id', async (req, res) => {
     try {
-        const filmId = req.params.id;
+        const filmId = parseInt(req.params.id, 10);
 
         // Récupérer les informations du film
-        const [films] = await pool.query(
-            'SELECT * FROM Film WHERE id = ?',
+        const { rows: films } = await pool.query(
+            'SELECT * FROM Film WHERE id = $1',
             [filmId]
         );
 
@@ -48,11 +48,11 @@ app.get('/films/:id', async (req, res) => {
         const film = films[0];
 
         // Récupérer les programmations du film
-        const [programmations] = await pool.query(
+        const { rows: programmations } = await pool.query(
             `SELECT p.*, c.nom as cinema_nom, c.adresse, c.ville
             FROM Programmation p
             JOIN Cinema c ON p.cinemaid = c.id
-            WHERE p.filmid = ?
+            WHERE p.filmid = $1
             ORDER BY p.date_debut`,
             [filmId]
         );
@@ -86,7 +86,7 @@ app.get('/films/:id', async (req, res) => {
 // Route pour obtenir la liste des villes disponibles
 app.get('/villes', async (req, res) => {
     try {
-        const [villes] = await pool.query(
+        const { rows: villes } = await pool.query(
             'SELECT DISTINCT ville FROM Cinema ORDER BY ville'
         );
 
@@ -103,17 +103,17 @@ app.get('/films/recherche/:query', async (req, res) => {
         const { query } = req.params;
         const searchQuery = `%${query}%`;
 
-        const [films] = await pool.query(
+        const { rows: films } = await pool.query(
             `SELECT DISTINCT f.*, c.nom as cinema_nom, c.adresse, c.ville
             FROM Film f
             JOIN Programmation p ON f.id = p.filmid
             JOIN Cinema c ON p.cinemaid = c.id
-            WHERE f.titre LIKE ?
-            OR f.realisateur LIKE ?
-            OR f.acteurs_principaux LIKE ?
-            OR f.genres LIKE ?
+            WHERE f.titre ILIKE $1
+            OR f.realisateur ILIKE $1
+            OR f.acteurs_principaux ILIKE $1
+            OR f.genres ILIKE $1
             ORDER BY f.titre`,
-            [searchQuery, searchQuery, searchQuery, searchQuery]
+            [searchQuery]
         );
 
         res.json(films);

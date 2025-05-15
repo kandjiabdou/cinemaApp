@@ -35,8 +35,8 @@ app.post('/register', async (req, res) => {
         const { nom, adresse, ville, login, mot_de_passe, email } = req.body;
 
         // Vérifier si le login existe déjà
-        const [existingUsers] = await pool.query(
-            'SELECT * FROM Cinema WHERE login = ?',
+        const { rows: existingUsers } = await pool.query(
+            'SELECT * FROM Cinema WHERE login = $1',
             [login]
         );
 
@@ -48,12 +48,12 @@ app.post('/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(mot_de_passe, 10);
 
         // Insérer le nouveau cinéma
-        const [result] = await pool.query(
-            'INSERT INTO Cinema (nom, adresse, ville, login, mot_de_passe, email) VALUES (?, ?, ?, ?, ?, ?)',
+        const result = await pool.query(
+            'INSERT INTO Cinema (nom, adresse, ville, login, mot_de_passe, email) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
             [nom, adresse, ville, login, hashedPassword, email]
         );
 
-        res.status(201).json({ message: 'Cinéma inscrit avec succès', id: result.insertId });
+        res.status(201).json({ message: 'Cinéma inscrit avec succès', id: result.rows[0].id });
     } catch (error) {
         console.error('Erreur lors de l\'inscription:', error);
         res.status(500).json({ message: 'Erreur lors de l\'inscription' });
@@ -66,8 +66,8 @@ app.post('/login', async (req, res) => {
         const { login, mot_de_passe } = req.body;
 
         // Vérifier les identifiants
-        const [users] = await pool.query(
-            'SELECT * FROM Cinema WHERE login = ?',
+        const { rows: users } = await pool.query(
+            'SELECT * FROM Cinema WHERE login = $1',
             [login]
         );
 
