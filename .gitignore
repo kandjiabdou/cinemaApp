@@ -79,22 +79,19 @@ docker-compose.override.yml
 *.tsbuildinfo
 
 # Package manager
-yarn.lock
-package-lock.json
+# Ne pas ignorer package.json et package-lock.json
+# yarn.lock
+# package-lock.json
 pnpm-lock.yaml
 
 # Build directories for each service
-frontend/build/
-frontend/dist/
-api-gateway/dist/
-auth-service/dist/
-cinema-service/dist/
-public-service/dist/
+**/build/
+**/dist/
+**/out/
+**/.next/
 
 # Service specific
 **/node_modules/
-**/dist/
-**/build/
 **/.env
 **/.env.*
 **/coverage/
@@ -154,7 +151,8 @@ dist
 
 # Gatsby files
 .cache/
-public
+# Ne pas ignorer le dossier public du frontend
+# public
 
 # vuepress build output
 .vuepress/dist
