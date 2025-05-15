@@ -1,0 +1,43 @@
+CREATE DATABASE IF NOT EXISTS cinema_app;
+USE cinema_app;
+
+CREATE TABLE IF NOT EXISTS Cinema (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nom VARCHAR(255) NOT NULL,
+    adresse VARCHAR(255) NOT NULL,
+    ville VARCHAR(255) NOT NULL,
+    login VARCHAR(255) NOT NULL UNIQUE,
+    mot_de_passe VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS Film (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    titre VARCHAR(255) NOT NULL,
+    duree INT NOT NULL,
+    langue VARCHAR(50) NOT NULL,
+    sous_titres BOOLEAN DEFAULT FALSE,
+    realisateur VARCHAR(255) NOT NULL,
+    acteurs_principaux TEXT NOT NULL,
+    synopsis TEXT,
+    age_minimum VARCHAR(10) NOT NULL,
+    genres VARCHAR(255),
+    poster VARCHAR(255) NOT NULL DEFAULT '/images/default-poster.jpg',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS Programmation (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    filmid INT NOT NULL,
+    cinemaid INT NOT NULL,
+    date_debut DATE NOT NULL,
+    date_fin DATE NOT NULL,
+    jour_1 VARCHAR(20) NOT NULL,
+    jour_2 VARCHAR(20) NOT NULL,
+    jour_3 VARCHAR(20) NOT NULL,
+    heure_debut TIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (filmid) REFERENCES Film(id) ON DELETE CASCADE,
+    FOREIGN KEY (cinemaid) REFERENCES Cinema(id) ON DELETE CASCADE
+); 

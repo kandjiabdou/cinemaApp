@@ -1,0 +1,9 @@
+{
+  "name": "shared",
+  "version": "1.0.0",
+  "description": "Code partagé entre les services",
+  "main": "database.js",
+  "dependencies": {
+    "mysql2": "^3.6.5"
+  }
+} 
