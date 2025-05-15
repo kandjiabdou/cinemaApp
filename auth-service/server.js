@@ -60,6 +60,27 @@ app.post('/register', async (req, res) => {
     }
 });
 
+// Route pour obtenir le profil du cinéma connecté
+app.get('/profile', authenticateToken, async (req, res) => {
+    try {
+        const userId = parseInt(req.user.id, 10);
+
+        const { rows: users } = await pool.query(
+            'SELECT id, nom, adresse, ville, login, email FROM Cinema WHERE id = $1',
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'Utilisateur non trouvé' });
+        }
+
+        res.json(users[0]);
+    } catch (error) {
+        console.error('Erreur lors de la récupération du profil:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération du profil' });
+    }
+});
+
 // Route de connexion
 app.post('/login', async (req, res) => {
     try {

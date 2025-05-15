@@ -44,6 +44,96 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Routes pour les films
+// Route pour obtenir tous les films du cinéma
+app.get('/films', authenticateToken, async (req, res) => {
+    try {
+        const cinemaid = parseInt(req.user.id, 10);
+        const { rows: films } = await pool.query(
+            `SELECT f.*
+            FROM Film f
+            JOIN Programmation p ON f.id = p.filmid
+            WHERE p.cinemaid = $1
+            ORDER BY f.titre`,
+            [cinemaid]
+        );
+
+        res.json(films);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des films:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération des films' });
+    }
+});
+
+// Route pour obtenir un film spécifique du cinéma
+app.get('/films/:id', authenticateToken, async (req, res) => {
+    try {
+        const filmId = parseInt(req.params.id, 10);
+        const cinemaid = parseInt(req.user.id, 10);
+
+        const { rows: films } = await pool.query(
+            `SELECT f.*
+            FROM Film f
+            JOIN Programmation p ON f.id = p.filmid
+            WHERE f.id = $1 AND p.cinemaid = $2`,
+            [filmId, cinemaid]
+        );
+
+        if (films.length === 0) {
+            return res.status(404).json({ message: 'Film non trouvé' });
+        }
+
+        res.json(films[0]);
+    } catch (error) {
+        console.error('Erreur lors de la récupération du film:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération du film' });
+    }
+});
+
+// Route pour obtenir toutes les programmations du cinéma
+app.get('/programmations', authenticateToken, async (req, res) => {
+    try {
+        const cinemaid = parseInt(req.user.id, 10);
+        const { rows: programmations } = await pool.query(
+            `SELECT p.*, f.titre as film_titre
+            FROM Programmation p
+            JOIN Film f ON p.filmid = f.id
+            WHERE p.cinemaid = $1
+            ORDER BY p.date_debut, p.heure_debut`,
+            [cinemaid]
+        );
+
+        res.json(programmations);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des programmations:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération des programmations' });
+    }
+});
+
+// Route pour obtenir une programmation spécifique
+app.get('/programmations/:id', authenticateToken, async (req, res) => {
+    try {
+        const programmationId = parseInt(req.params.id, 10);
+        const cinemaid = parseInt(req.user.id, 10);
+
+        const { rows: programmations } = await pool.query(
+            `SELECT p.*, f.titre as film_titre
+            FROM Programmation p
+            JOIN Film f ON p.filmid = f.id
+            WHERE p.id = $1 AND p.cinemaid = $2`,
+            [programmationId, cinemaid]
+        );
+
+        if (programmations.length === 0) {
+            return res.status(404).json({ message: 'Programmation non trouvée' });
+        }
+
+        res.json(programmations[0]);
+    } catch (error) {
+        console.error('Erreur lors de la récupération de la programmation:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération de la programmation' });
+    }
+});
+
 app.post('/films', authenticateToken, upload.single('poster'), async (req, res) => {
     try {
         const {

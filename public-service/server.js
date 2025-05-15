@@ -30,6 +30,24 @@ app.get('/films/ville/:ville', async (req, res) => {
     }
 });
 
+// Route pour obtenir tous les films
+app.get('/films', async (req, res) => {
+    try {
+        const { rows: films } = await pool.query(
+            `SELECT f.*, c.nom as cinema_nom, c.adresse, c.ville
+            FROM Film f
+            LEFT JOIN Programmation p ON f.id = p.filmid
+            LEFT JOIN Cinema c ON p.cinemaid = c.id
+            ORDER BY f.titre`
+        );
+
+        res.json(films);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des films:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération des films' });
+    }
+});
+
 // Route pour obtenir les détails d'un film spécifique
 app.get('/films/:id', async (req, res) => {
     try {
