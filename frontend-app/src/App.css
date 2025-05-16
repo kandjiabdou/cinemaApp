@@ -1,52 +1,106 @@
-.App {
-  text-align: center;
+.app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: #f5f5f5;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.nav-menu {
+  background-color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.nav-menu a {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-logo {
+  color: #e50914;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-decoration: none;
 }
 
-.App-header {
-  background-color: #282c34;
-  padding: 1rem;
-  color: white;
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.nav-links a {
+  color: #2c2c2c;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.nav-links a:hover {
+  color: #e50914;
+}
+
+.admin-link {
+  background-color: #e50914;
+  color: white !important;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.3s !important;
+}
+
+.admin-link:hover {
+  background-color: #b2070f;
+  color: white !important;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 0;
+}
+
+/* Styles pour les états de chargement et d'erreur */
+.loading-container,
+.error-container {
   text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto;
+  max-width: 600px;
 }
 
-.App-header h1 {
-  margin: 0;
-  font-size: 1.8rem;
+.loading-container p {
+  color: #666;
+  font-size: 1.2rem;
+}
+
+.error-container h3 {
+  color: #e50914;
   margin-bottom: 1rem;
 }
 
-nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0 0;
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
+.error-container p {
+  color: #666;
+  margin-bottom: 1.5rem;
 }
 
-nav a {
+.retry-button {
+  padding: 0.8rem 1.5rem;
+  background-color: #e50914;
   color: white;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.3s ease;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s;
 }
 
-nav a:hover {
-  color: #e50914;
+.retry-button:hover {
+  background-color: #b2070f;
 }
 
 .tabs {
@@ -74,10 +128,13 @@ nav a:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-main {
-  flex: 1;
-  padding: 20px;
-  background-color: #f5f5f5;
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .hero {
@@ -112,7 +169,7 @@ main {
 }
 
 footer {
-  background-color: #282c34;
+  background-color: #2c2c2c;
   color: white;
   text-align: center;
   padding: 1rem;
@@ -120,11 +177,6 @@ footer {
 }
 
 @media (max-width: 768px) {
-  nav ul {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
   .hero h2 {
     font-size: 2rem;
   }
@@ -250,47 +302,6 @@ footer {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 2rem;
-}
-
-/* Styles pour les états de chargement et d'erreur */
-.loading-container,
-.error-container,
-.no-movies-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 300px;
-  padding: 2rem;
-  text-align: center;
-}
-
-.error-container h3,
-.no-movies-container h3 {
-  color: #e50914;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-}
-
-.error-container p,
-.no-movies-container p {
-  color: #666;
-  margin-bottom: 1.5rem;
-}
-
-.retry-button {
-  padding: 0.8rem 1.5rem;
-  background-color: #e50914;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.3s ease;
-}
-
-.retry-button:hover {
-  background-color: #b2070f;
 }
 
 .movies-controls {

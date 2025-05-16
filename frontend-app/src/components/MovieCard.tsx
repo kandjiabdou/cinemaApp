@@ -5,7 +5,7 @@ interface MovieCardProps {
   titre: string;
   synopsis: string;
   duree: number;
-  imageUrl?: string;
+  poster?: string;
   date_sortie?: string;
   langue: string;
   sous_titres: boolean;
@@ -13,13 +13,14 @@ interface MovieCardProps {
   acteurs_principaux: string;
   age_minimum: string;
   genres: string;
+  onClick?: () => void;
 }
 
 const MovieCard: React.FC<MovieCardProps> = ({
   titre,
   synopsis,
   duree,
-  imageUrl,
+  poster,
   date_sortie,
   langue,
   sous_titres,
@@ -27,11 +28,12 @@ const MovieCard: React.FC<MovieCardProps> = ({
   acteurs_principaux,
   age_minimum,
   genres,
+  onClick
 }) => {
   return (
-    <div className="movie-card">
+    <div className="movie-card" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <div className="movie-image">
-        <img src={imageUrl || '/default-movie.jpg'} alt={titre} />
+        <img src={poster || '/default-movie.jpg'} alt={titre} />
       </div>
       <div className="movie-info">
         <h3>{titre}</h3>
@@ -56,7 +58,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
             <span>Genres: {genres}</span>
           </div>
         </div>
-        <button className="reserve-button">Réserver</button>
+        {!onClick && <button className="reserve-button">Réserver</button>}
       </div>
     </div>
   );

@@ -9,6 +9,15 @@ const app = express();
 const PORT = 8200;
 const JWT_SECRET = process.env.JWT_SECRET || 'votre_secret_jwt_super_securise';
 
+// Configuration CORS détaillée
+const corsOptions = {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
 // Configuration de Multer pour le stockage des images
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -21,9 +30,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
+
+// Middleware de logging des requêtes
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    if (req.method === 'POST' || req.method === 'PUT') {
+        console.log('Request Body:', req.body);
+    }
+    next();
+});
 
 // Middleware d'authentification
 const authenticateToken = (req, res, next) => {
@@ -135,7 +153,11 @@ app.get('/programmations/:id', authenticateToken, async (req, res) => {
 });
 
 app.post('/films', authenticateToken, upload.single('poster'), async (req, res) => {
+    const client = await pool.connect();
     try {
+        // Démarrer une transaction
+        await client.query('BEGIN');
+
         const {
             titre,
             duree,
@@ -145,13 +167,21 @@ app.post('/films', authenticateToken, upload.single('poster'), async (req, res) 
             acteurs_principaux,
             synopsis,
             age_minimum,
-            genres
+            genres,
+            // Nouveaux champs pour la programmation
+            date_debut,
+            date_fin,
+            jour_1,
+            jour_2,
+            jour_3,
+            heure_debut
         } = req.body;
 
-        const filmid = parseInt(req.body.filmid, 10);
+        const cinemaid = parseInt(req.user.id, 10);
         const poster = req.file ? `/uploads/${req.file.filename}` : '/images/default-poster.jpg';
 
-        const result = await pool.query(
+        // 1. Insérer le film
+        const filmResult = await client.query(
             `INSERT INTO Film (
                 titre, duree, langue, sous_titres, realisateur,
                 acteurs_principaux, synopsis, age_minimum, genres, poster
@@ -162,13 +192,42 @@ app.post('/films', authenticateToken, upload.single('poster'), async (req, res) 
             ]
         );
 
+        const filmId = filmResult.rows[0].id;
+
+        // 2. Créer automatiquement une programmation pour ce film
+        const programmationResult = await client.query(
+            `INSERT INTO Programmation (
+                filmid, cinemaid, date_debut, date_fin,
+                jour_1, jour_2, jour_3, heure_debut
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+            [
+                filmId,
+                cinemaid,
+                date_debut || '2024-03-20', // Date de début par défaut si non fournie
+                date_fin || '2024-04-20',   // Date de fin par défaut si non fournie
+                jour_1 || true,             // Par défaut, tous les jours sont programmés
+                jour_2 || true,
+                jour_3 || true,
+                heure_debut || '20:00'      // Heure de début par défaut
+            ]
+        );
+
+        // Valider la transaction
+        await client.query('COMMIT');
+
         res.status(201).json({
-            message: 'Film ajouté avec succès',
-            id: result.rows[0].id
+            message: 'Film et programmation ajoutés avec succès',
+            filmId: filmId,
+            programmationId: programmationResult.rows[0].id
         });
     } catch (error) {
-        console.error('Erreur lors de l\'ajout du film:', error);
-        res.status(500).json({ message: 'Erreur lors de l\'ajout du film' });
+        // En cas d'erreur, annuler la transaction
+        await client.query('ROLLBACK');
+        console.error('Erreur lors de l\'ajout du film et de la programmation:', error);
+        res.status(500).json({ message: 'Erreur lors de l\'ajout du film et de la programmation' });
+    } finally {
+        // Libérer le client
+        client.release();
     }
 });
 

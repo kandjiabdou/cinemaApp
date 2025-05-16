@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "Code partagé entre les services",
   "main": "database.js",
+  "scripts": {
+    "migrate": "node migrate.js",
+    "migrate:film": "node migrate_film.js",
+    "update-posters": "node update_film_posters.js",
+    "export-db": "node export_database.js",
+    "migrate-sample-data": "node migrate_sample_data.js"
+  },
   "dependencies": {
-    "mysql2": "^3.6.5"
+    "pg": "^8.11.3"
   }
 } 

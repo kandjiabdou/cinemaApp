@@ -115,6 +115,101 @@ app.get('/villes', async (req, res) => {
     }
 });
 
+// Route pour obtenir la liste des cinémas
+app.get('/cinemas', async (req, res) => {
+    try {
+        const { rows: cinemas } = await pool.query(
+            'SELECT id, nom, adresse, ville FROM Cinema ORDER BY ville, nom'
+        );
+
+        res.json(cinemas);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des cinémas:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération des cinémas' });
+    }
+});
+
+// Route pour obtenir les films d'un cinéma spécifique
+app.get('/cinemas/:cinemaId/films', async (req, res) => {
+    try {
+        const cinemaId = parseInt(req.params.cinemaId, 10);
+
+        // Vérifier d'abord si le cinéma existe
+        const { rows: cinemas } = await pool.query(
+            'SELECT id FROM Cinema WHERE id = $1',
+            [cinemaId]
+        );
+
+        if (cinemas.length === 0) {
+            return res.status(404).json({ message: 'Cinéma non trouvé' });
+        }
+
+        const { rows: films } = await pool.query(
+            `SELECT DISTINCT f.*
+            FROM Film f
+            JOIN Programmation p ON f.id = p.filmid
+            WHERE p.cinemaid = $1
+            ORDER BY f.titre`,
+            [cinemaId]
+        );
+
+        // Retourner un tableau vide si aucun film n'est trouvé
+        res.json(films);
+    } catch (error) {
+        console.error('Erreur lors de la récupération des films du cinéma:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération des films du cinéma' });
+    }
+});
+
+// Route pour obtenir un film spécifique d'un cinéma
+app.get('/cinemas/:cinemaId/films/:filmId', async (req, res) => {
+    try {
+        const cinemaId = parseInt(req.params.cinemaId, 10);
+        const filmId = parseInt(req.params.filmId, 10);
+
+        // Vérifier si le film est programmé dans ce cinéma
+        const { rows: films } = await pool.query(
+            `SELECT f.*, p.date_debut, p.date_fin, p.jour_1, p.jour_2, p.jour_3, p.heure_debut
+            FROM Film f
+            JOIN Programmation p ON f.id = p.filmid
+            WHERE p.cinemaid = $1 AND f.id = $2`,
+            [cinemaId, filmId]
+        );
+
+        if (films.length === 0) {
+            return res.status(404).json({ message: 'Film non trouvé dans ce cinéma' });
+        }
+
+        const film = films[0];
+
+        // Formater la réponse avec les informations de programmation
+        const response = {
+            ...film,
+            programmation: {
+                date_debut: film.date_debut,
+                date_fin: film.date_fin,
+                jour_1: film.jour_1,
+                jour_2: film.jour_2,
+                jour_3: film.jour_3,
+                heure_debut: film.heure_debut
+            }
+        };
+
+        // Supprimer les champs de programmation du niveau supérieur
+        delete response.date_debut;
+        delete response.date_fin;
+        delete response.jour_1;
+        delete response.jour_2;
+        delete response.jour_3;
+        delete response.heure_debut;
+
+        res.json(response);
+    } catch (error) {
+        console.error('Erreur lors de la récupération du film du cinéma:', error);
+        res.status(500).json({ message: 'Erreur lors de la récupération du film du cinéma' });
+    }
+});
+
 // Route pour rechercher des films
 app.get('/films/recherche/:query', async (req, res) => {
     try {

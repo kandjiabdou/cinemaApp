@@ -1,0 +1,85 @@
+.cinema-movies-page {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.cinema-header {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.cinema-header h2 {
+    color: #e50914;
+    margin: 0 0 1rem 0;
+    font-size: 2rem;
+}
+
+.cinema-details {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.cinema-details p {
+    margin: 0;
+    color: #2c2c2c;
+}
+
+.cinema-details strong {
+    color: #666;
+}
+
+.cinema-movies-page h3 {
+    color: #2c2c2c;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.movies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.cinema-movies-loading,
+.cinema-movies-error,
+.no-movies-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.cinema-movies-error h3,
+.no-movies-container h3 {
+    color: #e50914;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.cinema-movies-error p,
+.no-movies-container p {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+.retry-button {
+    padding: 0.8rem 1.5rem;
+    background-color: #e50914;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.retry-button:hover {
+    background-color: #b2070f;
+} 

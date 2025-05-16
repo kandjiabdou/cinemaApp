@@ -8,8 +8,23 @@ const app = express();
 const PORT = 8100;
 const JWT_SECRET = process.env.JWT_SECRET || 'votre_secret_jwt_super_securise';
 
-app.use(cors());
+// Configuration CORS détaillée
+const corsOptions = {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Middleware de logging des requêtes
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
 
 // Middleware d'authentification
 const authenticateToken = (req, res, next) => {
@@ -32,7 +47,16 @@ const authenticateToken = (req, res, next) => {
 // Route d'inscription
 app.post('/register', async (req, res) => {
     try {
-        const { nom, adresse, ville, login, mot_de_passe, email } = req.body;
+        const { 
+            nom, 
+            adresse, 
+            ville, 
+            login, 
+            mot_de_passe, 
+            email, 
+            code_postal, 
+            telephone 
+        } = req.body;
 
         // Vérifier si le login existe déjà
         const { rows: existingUsers } = await pool.query(
@@ -49,14 +73,30 @@ app.post('/register', async (req, res) => {
 
         // Insérer le nouveau cinéma
         const result = await pool.query(
-            'INSERT INTO Cinema (nom, adresse, ville, login, mot_de_passe, email) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-            [nom, adresse, ville, login, hashedPassword, email]
+            'INSERT INTO Cinema (nom, adresse, ville, login, mot_de_passe, email, code_postal, telephone) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+            [nom, adresse, ville, login, hashedPassword, email, code_postal, telephone]
         );
 
-        res.status(201).json({ message: 'Cinéma inscrit avec succès', id: result.rows[0].id });
+        // Générer le token JWT
+        const token = jwt.sign(
+            { id: result.rows[0].id, login: login, role: 'cinema' },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.status(201).json({ 
+            message: 'Cinéma inscrit avec succès', 
+            token,
+            user: {
+                id: result.rows[0].id,
+                nom,
+                login,
+                email
+            }
+        });
     } catch (error) {
         console.error('Erreur lors de l\'inscription:', error);
-        res.status(500).json({ message: 'Erreur lors de l\'inscription' });
+        res.status(500).json({ message: 'Erreur lors de l\'inscription: ' + error.message });
     }
 });
 
@@ -128,6 +168,42 @@ app.post('/login', async (req, res) => {
 // Route de vérification du token
 app.get('/verify', authenticateToken, (req, res) => {
     res.json({ user: req.user });
+});
+
+// Route de test pour connexion rapide
+app.post('/test-login', async (req, res) => {
+    try {
+        // Récupérer le cinéma avec l'ID 1
+        const { rows: users } = await pool.query(
+            'SELECT * FROM Cinema WHERE id = 1'
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'Cinéma de test non trouvé' });
+        }
+
+        const user = users[0];
+
+        // Générer le token JWT
+        const token = jwt.sign(
+            { id: user.id, login: user.login, role: 'cinema' },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                nom: user.nom,
+                login: user.login,
+                email: user.email
+            }
+        });
+    } catch (error) {
+        console.error('Erreur lors de la connexion de test:', error);
+        res.status(500).json({ message: 'Erreur lors de la connexion de test' });
+    }
 });
 
 app.listen(PORT, () => {

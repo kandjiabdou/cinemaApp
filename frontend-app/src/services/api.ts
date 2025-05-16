@@ -24,7 +24,7 @@ export interface Movie {
   titre: string; // Changé de title à titre selon la doc
   synopsis: string; // Changé de description à synopsis
   duree: number; // Changé de duration à duree
-  imageUrl?: string; // Optionnel car non mentionné dans la doc
+  poster?: string; // Optionnel car non mentionné dans la doc
   date_sortie?: string; // Optionnel car non mentionné dans la doc
   langue: string;
   sous_titres: boolean;
@@ -39,6 +39,8 @@ export interface Cinema {
   nom: string; // Changé de name à nom
   adresse: string;
   ville: string;
+  code_postal: string;
+  telephone: string;
   email: string;
   login: string;
 }
@@ -58,8 +60,10 @@ const api = {
     return response.data;
   },
 
-  getMovie: async (id: number): Promise<Movie> => {
-    const response = await axios.get(`${API_BASE_URL}/public/films/${id}`);
+  getMovie: async (movieId: number, token: string) => {
+    const response = await axios.get(`${API_BASE_URL}/cinema/films/${movieId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
   },
 
@@ -93,10 +97,27 @@ const api = {
     return response.data;
   },
 
-  updateMovie: async (id: number, movieData: Partial<Movie>, token: string): Promise<Movie> => {
-    const response = await axios.put(`${API_BASE_URL}/cinema/films/${id}`, movieData, {
+  updateMovie: async (movieId: number, movieData: any, token: string) => {
+    const response = await axios.put(`${API_BASE_URL}/cinema/films/${movieId}`, movieData, {
       headers: { Authorization: `Bearer ${token}` }
     });
+    return response.data;
+  },
+
+  // Récupérer la liste des cinémas
+  getCinemas: async (): Promise<Cinema[]> => {
+    const response = await axios.get(`${API_BASE_URL}/public/cinemas`);
+    return response.data;
+  },
+
+  // Récupérer les films d'un cinéma spécifique
+  getCinemaMovies: async (cinemaId: number): Promise<Movie[]> => {
+    const response = await axios.get(`${API_BASE_URL}/public/cinemas/${cinemaId}/films`);
+    return response.data;
+  },
+
+  getCinemaFilmDetails: async (cinemaId: number, filmId: number): Promise<Movie & { programmation: any }> => {
+    const response = await axios.get(`${API_BASE_URL}/public/cinemas/${cinemaId}/films/${filmId}`);
     return response.data;
   }
 };
