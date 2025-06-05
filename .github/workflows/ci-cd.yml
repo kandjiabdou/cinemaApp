@@ -164,25 +164,13 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🗄️ Setup Test Database
+      - name: 🧹 Clean Up Existing Containers
         run: |
-          echo "🗄️ Démarrage de PostgreSQL pour les tests..."
-          docker run -d \
-            --name test-postgres \
-            -e POSTGRES_PASSWORD=postgres \
-            -e POSTGRES_DB=cinema_test \
-            -p 5432:5432 \
-            postgres:15-alpine
-          
-          # Attendre que PostgreSQL soit prêt
-          echo "⏳ Attente PostgreSQL..."
-          for i in {1..30}; do
-            if docker exec test-postgres pg_isready -U postgres; then
-              echo "✅ PostgreSQL prêt"
-              break
-            fi
-            sleep 2
-          done
+          echo "🧹 Nettoyage des conteneurs existants..."
+          # Arrêter et supprimer les conteneurs existants qui pourraient créer des conflits
+          docker stop $(docker ps -aq) 2>/dev/null || echo "Aucun conteneur à arrêter"
+          docker rm $(docker ps -aq) 2>/dev/null || echo "Aucun conteneur à supprimer"
+          echo "✅ Nettoyage terminé"
 
       - name: 🚀 Start Services with Docker Compose
         run: |
@@ -257,8 +245,6 @@ jobs:
         run: |
           echo "🧹 Nettoyage des tests d'intégration..."
           docker compose down -v
-          docker stop test-postgres || true
-          docker rm test-postgres || true
           docker system prune -f
 
   # Job 5: Notification Finale
