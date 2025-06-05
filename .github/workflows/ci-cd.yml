@@ -189,7 +189,7 @@ jobs:
           echo "🚀 Démarrage des services avec Docker Compose..."
           
           # Démarrer tous les services
-          docker-compose up -d --build
+          docker compose up -d --build
           
           echo "⏳ Attente que les services soient prêts..."
           sleep 45
@@ -200,7 +200,7 @@ jobs:
           
           # Vérifier que les conteneurs sont en cours d'exécution
           echo "📋 État des conteneurs:"
-          docker-compose ps
+          docker compose ps
           
           # Tests de connectivité basiques
           echo "🌐 Tests de connectivité:"
@@ -256,7 +256,7 @@ jobs:
         if: always()
         run: |
           echo "🧹 Nettoyage des tests d'intégration..."
-          docker-compose down -v
+          docker compose down -v
           docker stop test-postgres || true
           docker rm test-postgres || true
           docker system prune -f
