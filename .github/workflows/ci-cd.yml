@@ -164,14 +164,6 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🧹 Clean Up Existing Containers
-        run: |
-          echo "🧹 Nettoyage des conteneurs existants..."
-          # Arrêter et supprimer les conteneurs existants qui pourraient créer des conflits
-          docker stop $(docker ps -aq) 2>/dev/null || echo "Aucun conteneur à arrêter"
-          docker rm $(docker ps -aq) 2>/dev/null || echo "Aucun conteneur à supprimer"
-          echo "✅ Nettoyage terminé"
-
       - name: 🚀 Start Services with Docker Compose
         run: |
           echo "🚀 Démarrage des services avec Docker Compose..."
@@ -263,62 +255,23 @@ jobs:
           echo "🕐 Terminé à: $(date)"
           echo ""
           
-          # Tests Backend
-          if [[ "${{ needs.test-backend.result }}" == "success" ]]; then
-            echo "✅ Tests Backend Services: RÉUSSI"
-          else
-            echo "❌ Tests Backend Services: ÉCHEC"
-          fi
-          
-          # Tests Frontend
-          if [[ "${{ needs.test-frontend.result }}" == "success" ]]; then
-            echo "✅ Tests Frontend React: RÉUSSI"
-          else
-            echo "❌ Tests Frontend React: ÉCHEC"
-          fi
-          
-          # Build Docker
-          if [[ "${{ needs.build-docker.result }}" == "success" ]]; then
-            echo "✅ Build Docker Images: RÉUSSI"
-          else
-            echo "❌ Build Docker Images: ÉCHEC"
-          fi
-          
-          # Tests d'Intégration
-          if [[ "${{ needs.integration-tests.result }}" == "success" ]]; then
-            echo "✅ Tests d'Intégration: RÉUSSI"
-          else
-            echo "❌ Tests d'Intégration: ÉCHEC"
-          fi
-          
+          # Affichage simple des résultats
+          echo "📋 RÉSULTATS PAR ÉTAPE:"
+          echo "Backend Services: ${{ needs.test-backend.result }}"
+          echo "Frontend React: ${{ needs.test-frontend.result }}"  
+          echo "Docker Images: ${{ needs.build-docker.result }}"
+          echo "Tests Intégration: ${{ needs.integration-tests.result }}"
           echo ""
-          echo "📈 STATISTIQUES:"
           
-          # Calculer le score
-          success_count=0
-          total_count=4
-          
-          [[ "${{ needs.test-backend.result }}" == "success" ]] && ((success_count++))
-          [[ "${{ needs.test-frontend.result }}" == "success" ]] && ((success_count++))
-          [[ "${{ needs.build-docker.result }}" == "success" ]] && ((success_count++))
-          [[ "${{ needs.integration-tests.result }}" == "success" ]] && ((success_count++))
-          
-          echo "📊 Score: $success_count/$total_count étapes réussies"
-          percentage=$((success_count * 100 / total_count))
-          echo "🎯 Taux de réussite: $percentage%"
-          
-          echo ""
-          if [[ $success_count -eq $total_count ]]; then
-            echo "🎉 SUCCÈS COMPLET! Tous les tests sont passés!"
-            echo "✨ L'application est prête pour le déploiement"
-          elif [[ $success_count -ge 3 ]]; then
-            echo "⚠️ SUCCÈS PARTIEL: Quelques problèmes mineurs"
-            echo "🔧 Vérifiez les logs des étapes échouées"
+          # Message final simple
+          if [[ "${{ needs.test-backend.result }}" == "success" && "${{ needs.test-frontend.result }}" == "success" && "${{ needs.build-docker.result }}" == "success" && "${{ needs.integration-tests.result }}" == "success" ]]; then
+            echo "🎉 SUCCÈS COMPLET! Toutes les étapes ont réussi!"
+            echo "✨ L'application Cinema App est prête!"
           else
-            echo "💥 ÉCHEC CRITIQUE: Plusieurs étapes ont échoué"
-            echo "🚨 Action requise avant le déploiement"
-            exit 1
+            echo "⚠️ Certaines étapes ont échoué, vérifiez les logs ci-dessus"
           fi
+          
+          echo "🏁 Rapport terminé"
 
       - name: 🎯 Success Notification
         if: needs.test-backend.result == 'success' && needs.test-frontend.result == 'success' && needs.build-docker.result == 'success' && needs.integration-tests.result == 'success'

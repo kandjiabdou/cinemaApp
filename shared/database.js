@@ -16,7 +16,7 @@ if (process.env.DATABASE_URL) {
     // Configuration locale pour développement
     poolConfig = {
         host: 'localhost',
-        port: 5432,
+        port: 5433,
         user: 'postgres',
         password: 'postgres',
         database: 'cinema_db',
