@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { Film, Building, LogIn, Home } from 'lucide-react';
+import { Film, Building, Home } from 'lucide-react';
 
 import CinemasPage from './pages/CinemasPage';
 import CinemaMoviesPage from './pages/CinemaMoviesPage';
