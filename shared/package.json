@@ -8,7 +8,8 @@
     "migrate:film": "node migrate_film.js",
     "update-posters": "node update_film_posters.js",
     "export-db": "node export_database.js",
-    "migrate-sample-data": "node migrate_sample_data.js"
+    "migrate-sample-data": "node migrate_sample_data.js",
+    "migrate:all": "node migrate_all.js"
   },
   "dependencies": {
     "pg": "^8.11.3"

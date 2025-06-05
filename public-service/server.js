@@ -1,12 +1,78 @@
 const express = require('express');
 const cors = require('cors');
-const pool = require('../shared/database');
+const pool = require('./database');
+const promClient = require('prom-client');
 
 const app = express();
 const PORT = 8300;
 
+// Configuration des métriques Prometheus
+const register = promClient.register;
+promClient.collectDefaultMetrics({ register });
+
+// Métriques personnalisées pour le service public
+const publicRequestsTotal = new promClient.Counter({
+    name: 'public_requests_total',
+    help: 'Total number of public service requests',
+    labelNames: ['method', 'endpoint', 'status_code']
+});
+
+const publicRequestDuration = new promClient.Histogram({
+    name: 'public_request_duration_seconds',
+    help: 'Public service request duration in seconds',
+    labelNames: ['method', 'endpoint'],
+    buckets: [0.1, 0.5, 1, 2, 5]
+});
+
+const searchQueriesTotal = new promClient.Counter({
+    name: 'search_queries_total',
+    help: 'Total number of search queries'
+});
+
+const publicFilmsViewed = new promClient.Counter({
+    name: 'public_films_viewed_total',
+    help: 'Total number of films viewed by public users'
+});
+
+register.registerMetric(publicRequestsTotal);
+register.registerMetric(publicRequestDuration);
+register.registerMetric(searchQueriesTotal);
+register.registerMetric(publicFilmsViewed);
+
 app.use(cors());
 app.use(express.json());
+
+// Middleware pour collecter les métriques
+app.use((req, res, next) => {
+    const start = Date.now();
+    
+    res.on('finish', () => {
+        const duration = (Date.now() - start) / 1000;
+        const endpoint = req.path;
+        
+        publicRequestsTotal.inc({
+            method: req.method,
+            endpoint: endpoint,
+            status_code: res.statusCode
+        });
+        
+        publicRequestDuration.observe({
+            method: req.method,
+            endpoint: endpoint
+        }, duration);
+        
+        // Incrémenter les métriques spécifiques
+        if (endpoint.includes('/recherche/')) {
+            searchQueriesTotal.inc();
+        }
+        
+        if (endpoint.includes('/films/') && req.method === 'GET') {
+            publicFilmsViewed.inc();
+        }
+    });
+    
+    next();
+});
 
 // Route pour obtenir tous les films d'une ville
 app.get('/films/ville/:ville', async (req, res) => {
@@ -234,6 +300,12 @@ app.get('/films/recherche/:query', async (req, res) => {
         console.error('Erreur lors de la recherche des films:', error);
         res.status(500).json({ message: 'Erreur lors de la recherche des films' });
     }
+});
+
+// Endpoint pour les métriques Prometheus
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
 });
 
 app.listen(PORT, () => {

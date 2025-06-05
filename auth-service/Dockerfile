@@ -1,33 +1,31 @@
-# Étape de build
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-# Copie des fichiers de dépendances
-COPY package*.json ./
-COPY tsconfig.json ./
-
-# Installation des dépendances
-RUN npm ci
-
-# Copie du code source
-COPY src/ ./src/
-
-# Build de l'application
-RUN npm run build
-
-# Étape de production
+# Utiliser une image Node.js légère
 FROM node:18-alpine
 
+# Créer le répertoire de l'application
 WORKDIR /app
 
-# Copie des fichiers nécessaires depuis l'étape de build
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
+# Copier les fichiers de dépendances
 COPY package*.json ./
 
-# Exposition du port
-EXPOSE 3001
+# Installer les dépendances
+RUN npm install --omit=dev && npm cache clean --force
+
+# Copier le code source
+COPY server.js ./
+COPY database.js ./
+
+# Créer un utilisateur non-root pour la sécurité
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Changer vers l'utilisateur non-root
+USER nodejs
+
+# Exposer le port
+EXPOSE 8300
+
+# Variables d'environnement
+ENV NODE_ENV=production
 
 # Commande de démarrage
-CMD ["npm", "start"] 
+CMD ["node", "server.js"] 

@@ -1,45 +1,32 @@
-version: '3.8'
+
 
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - api-gateway
-      - auth-service
-      - cinema-service
-      - public-service
-      - frontend-app
-    networks:
-      - cinema-network
-
+  # ===== MICROSERVICES =====
   api-gateway:
     build:
       context: ./api-gateway
       dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
     environment:
       - NODE_ENV=production
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - CINEMA_SERVICE_URL=http://cinema-service:3002
-      - PUBLIC_SERVICE_URL=http://public-service:3003
     networks:
       - cinema-network
+    depends_on:
+      - auth-service
+      - cinema-service
+      - public-service
 
   auth-service:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
+    ports:
+      - "8100:8100"
     environment:
       - NODE_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=cinema_auth
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - JWT_SECRET=votre_secret_jwt
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cinema_db
+      - JWT_SECRET=votre_secret_jwt_super_securise
     depends_on:
       - postgres
     networks:
@@ -49,15 +36,15 @@ services:
     build:
       context: ./cinema-service
       dockerfile: Dockerfile
+    ports:
+      - "8200:8200"
     environment:
       - NODE_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=cinema_db
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cinema_db
     depends_on:
       - postgres
+    volumes:
+      - cinema_uploads:/app/uploads
     networks:
       - cinema-network
 
@@ -65,13 +52,11 @@ services:
     build:
       context: ./public-service
       dockerfile: Dockerfile
+    ports:
+      - "8300:8300"
     environment:
       - NODE_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=cinema_public
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cinema_db
     depends_on:
       - postgres
     networks:
@@ -81,18 +66,21 @@ services:
     build:
       context: ./frontend-app
       dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=http://localhost/api
+      - REACT_APP_API_URL=http://localhost:8000
     networks:
       - cinema-network
 
+  # ===== DATABASE =====
   postgres:
     image: postgres:14-alpine
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_MULTIPLE_DATABASES=cinema_auth,cinema_db,cinema_public
+      - POSTGRES_DB=cinema_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -101,9 +89,53 @@ services:
     networks:
       - cinema-network
 
+  # ===== MONITORING =====
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - cinema-network
+    depends_on:
+      - api-gateway
+      - auth-service
+      - cinema-service
+      - public-service
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    networks:
+      - cinema-network
+    depends_on:
+      - prometheus
+
 networks:
   cinema-network:
     driver: bridge
 
 volumes:
-  postgres_data: 
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+  cinema_uploads: 

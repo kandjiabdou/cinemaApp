@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Configuration pour Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Configuration pour l'API Gateway
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Configuration pour le service d'authentification
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:8100']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Configuration pour le service cinéma
+  - job_name: 'cinema-service'
+    static_configs:
+      - targets: ['cinema-service:8200']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Configuration pour le service public
+  - job_name: 'public-service'
+    static_configs:
+      - targets: ['public-service:8300']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Configuration pour Node Exporter (métriques système, optionnel)
+  # - job_name: 'node-exporter'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100'] 

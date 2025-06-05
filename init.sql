@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS Film (
     synopsis TEXT,
     age_minimum VARCHAR(10) NOT NULL,
     genres VARCHAR(255),
-    poster VARCHAR(255) NOT NULL DEFAULT '/images/default-poster.jpg',
+    poster VARCHAR(255) NOT NULL DEFAULT 'https://m.media-amazon.com/images/I/613ypTLZHsL._SY445_.jpg',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -46,8 +46,8 @@ INSERT INTO Cinema (nom, adresse, ville, login, mot_de_passe, email, created_at)
 ('Cinéma Étoile', '45 avenue du Soleil', 'Lyon', 'etoile_login', 'etoilepass', 'info@etoile.fr', '2025-05-15 14:41:35');
 
 INSERT INTO Film (titre, duree, langue, sous_titres, realisateur, acteurs_principaux, synopsis, age_minimum, genres, poster, created_at) VALUES
-('Inception', 148, 'Anglais', TRUE, 'Christopher Nolan', 'Leonardo DiCaprio, Joseph Gordon-Levitt', 'Un voleur expérimenté en extraction de rêves est engagé pour implanter une idée dans l''esprit d''un PDG.', '12+', 'Science-fiction, Thriller', '/images/default-poster.jpg', '2025-05-15 14:41:35'),
-('Le Fabuleux Destin d''Amélie Poulain', 122, 'Français', FALSE, 'Jean-Pierre Jeunet', 'Audrey Tautou, Mathieu Kassovitz', 'Une jeune serveuse décide de changer la vie des gens qui l''entourent tout en luttant contre sa propre solitude.', '0+', 'Comédie romantique', '/images/default-poster.jpg', '2025-05-15 14:41:35');
+('Inception', 148, 'Anglais', TRUE, 'Christopher Nolan', 'Leonardo DiCaprio, Joseph Gordon-Levitt', 'Un voleur expérimenté en extraction de rêves est engagé pour implanter une idée dans l''esprit d''un PDG.', '12+', 'Science-fiction, Thriller', 'https://m.media-amazon.com/images/I/613ypTLZHsL._SY445_.jpg', '2025-05-15 14:41:35'),
+('Le Fabuleux Destin d''Amélie Poulain', 122, 'Français', FALSE, 'Jean-Pierre Jeunet', 'Audrey Tautou, Mathieu Kassovitz', 'Une jeune serveuse décide de changer la vie des gens qui l''entourent tout en luttant contre sa propre solitude.', '0+', 'Comédie romantique', 'https://m.media-amazon.com/images/I/613ypTLZHsL._SY445_.jpg', '2025-05-15 14:41:35');
 
 INSERT INTO Programmation (filmid, cinemaid, date_debut, date_fin, jour_1, jour_2, jour_3, heure_debut, created_at) VALUES
 (1, 1, '2025-05-20', '2025-06-10', 'Lundi', 'Mercredi', 'Vendredi', '20:00:00', '2025-05-15 14:41:35'),

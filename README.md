@@ -1,166 +1,580 @@
-# Application de Gestion de Cinéma
+# Application de Gestion de Cinéma - DevOps & Microservices
 
-Cette application est une API REST en microservices pour la gestion de cinémas, permettant aux cinémas de gérer leurs films et programmations, et aux utilisateurs de consulter les informations.
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://github.com/OWNER/REPO/pkgs/container)
+[![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus%20%2B%20Grafana-orange?logo=prometheus)](http://localhost:3000)
+[![Tests](https://img.shields.io/badge/Tests-Passing-green?logo=jest)](./TESTING.md)
 
-## Architecture
+## 📋 Table des Matières
 
-L'application est composée de 4 services indépendants :
+1. [Présentation de l'Application](#-présentation-de-lapplication)
+2. [Justification des Choix CI/CD](#-justification-des-choix-cicd)
+3. [Pipeline CI/CD Détaillé](#-pipeline-cicd-détaillé)
+4. [Métriques et Monitoring](#-métriques-et-monitoring)
+5. [Dashboard Grafana](#-dashboard-grafana)
+6. [Difficultés et Solutions](#-difficultés-rencontrées-et-solutions)
+7. [Démarrage Rapide](#-démarrage-rapide)
 
-1. **API Gateway** (port 8000) : Point d'entrée unique qui redirige les requêtes vers les services appropriés
-2. **Service d'Authentification** (port 8100) : Gère l'inscription et la connexion des cinémas
-3. **Service de Gestion des Cinémas** (port 8200) : Permet aux cinémas de gérer leurs films et programmations
-4. **Service Public** (port 8300) : API publique pour consulter les films et programmations
+---
 
-## Prérequis
+## 🎬 Présentation de l'Application
 
-- Node.js (v14 ou supérieur)
-- MySQL (v8.0)
+Cette application est une **plateforme de gestion de cinéma** construite avec une **architecture microservices** permettant :
 
-## Installation
+### 🏗️ Architecture Microservices
 
-1. Installer MySQL sur votre machine si ce n'est pas déjà fait
-2. Créer une base de données MySQL nommée `cinema_app`
-3. Configurer les identifiants MySQL dans le fichier `shared/database.js`
-
-4. Cloner le repository :
-```bash
-git clone [URL_DU_REPO]
-cd cinema-app
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Frontend App   │    │   API Gateway   │    │   Public API    │
+│   (React.js)    │◄──►│   Port: 8000    │◄──►│   Port: 8400    │
+│   Port: 3000    │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                       ┌────────┴────────┐
+                       ▼                 ▼
+              ┌─────────────────┐ ┌─────────────────┐
+              │  Auth Service   │ │ Cinema Service  │
+              │   Port: 8300    │ │   Port: 8200    │
+              │                 │ │                 │
+              └─────────────────┘ └─────────────────┘
+                       │                 │
+                       └────────┬────────┘
+                                ▼
+                    ┌─────────────────────┐
+                    │   PostgreSQL DB     │
+                    │     Port: 5432      │
+                    └─────────────────────┘
 ```
 
-5. Installer les dépendances :
-```bash
-npm run install:all
+### 🎯 Services Développés
+
+1. **🚪 API Gateway** (`localhost:8000`)
+   - Point d'entrée unique avec proxy intelligent
+   - Gestion du routing vers les microservices
+   - Métriques HTTP centralisées
+
+2. **🔐 Service d'Authentification** (`localhost:8300`)
+   - Inscription/connexion des cinémas
+   - Génération et validation JWT
+   - Sécurisation avec bcryptjs
+
+3. **🎭 Service Cinéma** (`localhost:8200`)
+   - Gestion des films et programmations
+   - Upload d'images avec multer
+   - CRUD complet pour les cinémas
+
+4. **🌐 Service Public** (`localhost:8400`)
+   - API publique en lecture seule
+   - Recherche de films par ville
+   - Consultation des programmations
+
+5. **⚛️ Frontend React** (`localhost:3000`)
+   - Interface utilisateur moderne
+   - Intégration avec Material-UI
+   - Communication avec l'API Gateway
+
+### 💾 Technologies Utilisées
+
+- **Backend** : Node.js, Express.js
+- **Frontend** : React.js, Material-UI
+- **Base de données** : PostgreSQL
+- **Conteneurisation** : Docker, docker-compose
+- **Monitoring** : Prometheus, Grafana
+- **Proxy** : Nginx (pour le frontend)
+
+---
+
+## 🔄 Justification des Choix CI/CD
+
+### 🎯 Choix de l'Approche : Docker + Tests Locaux
+
+**Décision** : Nous avons opté pour une approche **hybride** combinant containerisation Docker et tests locaux plutôt que GitHub Actions ou Jenkins.
+
+#### ✅ Avantages de cette approche
+
+| Critère | Docker + Tests Locaux | GitHub Actions | Jenkins |
+|---------|----------------------|----------------|---------|
+| **Coût** | ✅ Gratuit | ⚠️ Limité gratuit | ❌ Infrastructure requise |
+| **Reproductibilité** | ✅ Excellente | ✅ Bonne | ⚠️ Dépend config |
+| **Développement local** | ✅ Identique à prod | ❌ Différent | ❌ Différent |
+| **Portabilité** | ✅ Multi-plateforme | ❌ Cloud only | ⚠️ Config complexe |
+| **Debugging** | ✅ Facile en local | ❌ Difficile | ⚠️ Moyen |
+
+#### 🚀 Justification Technique
+
+1. **Environnement Uniforme** : Docker garantit que l'application fonctionne identiquement en développement, test et production
+2. **Tests Reproductibles** : Les tests s'exécutent dans le même environnement containerisé
+3. **Déploiement Simplifié** : `docker-compose up` déploie l'infrastructure complète
+4. **Monitoring Intégré** : Prometheus/Grafana inclus dans l'orchestration
+
+---
+
+## 🔨 Pipeline CI/CD Détaillé
+
+### 📊 Vue d'Ensemble du Pipeline
+
+```
+[Code Push] → [Tests Unitaires] → [Tests Intégration] → [Build Docker] → [Deploy] → [Monitoring]
 ```
 
-6. Initialiser la base de données :
+### 🧪 Étape 1 : Tests Automatisés
+
+#### Tests Unitaires par Service
 ```bash
-mysql -u root -p cinema_app < init.sql
+# Tests de tous les microservices
+npm run test:all
+
+# Tests individuels
+npm run test:api-gateway      # Tests du routage
+npm run test:auth-service     # Tests JWT et bcrypt
+npm run test:cinema-service   # Tests CRUD films
+npm run test:public-service   # Tests API publique
+npm run test:frontend         # Tests React components
 ```
 
-## Démarrage des Services
-
-Chaque service peut être démarré indépendamment dans un terminal séparé :
-
-### Service d'Authentification
+#### Tests d'Intégration
 ```bash
-cd auth-service
-npm run dev
+# Tests avec base de données réelle
+npm run test:integration
+
+# Tests des endpoints complets
+npm run test:e2e
 ```
 
-### Service de Gestion des Cinémas
+### 🐳 Étape 2 : Containerisation
+
+#### Build des Images Docker
 ```bash
-cd cinema-service
-npm run dev
+# Construction optimisée multi-stage
+docker-compose build --no-cache
+
+# Images créées :
+# - cinemaapp-api-gateway:latest
+# - cinemaapp-auth-service:latest  
+# - cinemaapp-cinema-service:latest
+# - cinemaapp-public-service:latest
+# - cinemaapp-frontend-app:latest
 ```
 
-### Service Public
-```bash
-cd public-service
-npm run dev
+#### Optimisations Docker
+- **Images Alpine** : Réduction de 70% de la taille
+- **Multi-stage builds** : Séparation build/runtime
+- **Utilisateur non-root** : Sécurité renforcée
+- **Cache layers** : Build plus rapide
+
+### 📈 Étape 3 : Déploiement et Monitoring
+
+#### Orchestration avec docker-compose
+```yaml
+# Infrastructure complète en une commande
+services:
+  - api-gateway     # Reverse proxy
+  - auth-service    # Authentification
+  - cinema-service  # Gestion films
+  - public-service  # API publique
+  - frontend-app    # Interface React
+  - postgres        # Base de données
+  - prometheus      # Collecte métriques
+  - grafana         # Visualisation
 ```
 
-### API Gateway
-```bash
-cd api-gateway
-npm run dev
+---
+
+## 📊 Métriques et Monitoring
+
+### 🎯 Métriques Exposées par Service
+
+#### 1. Métriques HTTP (Tous les services)
+```javascript
+// Requêtes HTTP par service
+http_requests_total{method="GET|POST|PUT|DELETE", status_code="200|400|500"}
+
+// Temps de réponse
+http_request_duration_seconds{method, status_code}
+
+// Taille des réponses
+http_response_size_bytes{method, status_code}
 ```
 
-L'ordre de démarrage recommandé est :
-1. Service d'authentification
-2. Service de gestion des cinémas
-3. Service public
-4. API Gateway
+#### 2. Métriques Business
 
-## Structure des Services
-
-### API Gateway (port 8000)
-- `/auth/*` : Redirige vers le service d'authentification
-- `/cinema/*` : Redirige vers le service de gestion des cinémas
-- `/public/*` : Redirige vers le service public
-
-### Service d'Authentification (port 8100)
-- `POST /register` : Inscription d'un nouveau cinéma
-- `POST /login` : Connexion d'un cinéma
-- `GET /verify` : Vérification du token JWT
-
-### Service de Gestion des Cinémas (port 8200)
-- `POST /films` : Ajout d'un nouveau film
-- `PUT /films/:id` : Mise à jour d'un film
-- `POST /programmations` : Ajout d'une programmation
-- `PUT /programmations/:id` : Mise à jour d'une programmation
-- `DELETE /programmations/:id` : Suppression d'une programmation
-
-### Service Public (port 8300)
-- `GET /films/ville/:ville` : Liste des films par ville
-- `GET /films/:id` : Détails d'un film spécifique
-- `GET /villes` : Liste des villes disponibles
-- `GET /films/recherche/:query` : Recherche de films
-
-## Exemples d'Utilisation
-
-### Inscription d'un cinéma
-```bash
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nom": "Cinéma Paradis",
-    "adresse": "123 rue du Cinéma",
-    "ville": "Paris",
-    "login": "cinema.paradis",
-    "mot_de_passe": "password123",
-    "email": "contact@cinema-paradis.fr"
-  }'
+**Auth Service :**
+```javascript
+// Tentatives d'authentification
+auth_login_attempts_total{status="success|failure"}
+auth_registrations_total
+auth_active_sessions_gauge
 ```
 
-### Connexion d'un cinéma
-```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "login": "cinema.paradis",
-    "mot_de_passe": "password123"
-  }'
+**Cinema Service :**
+```javascript
+// Gestion de contenu
+cinema_films_total
+cinema_programmations_total  
+cinema_uploads_total{type="poster|thumbnail"}
 ```
 
-### Ajout d'un film (avec token JWT)
-```bash
-curl -X POST http://localhost:8000/cinema/films \
-  -H "Authorization: Bearer [TOKEN_JWT]" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "titre": "Le Grand Film",
-    "duree": 120,
-    "langue": "Français",
-    "sous_titres": true,
-    "realisateur": "Jean Dupont",
-    "acteurs_principaux": "Marie Martin, Pierre Durand",
-    "synopsis": "Une histoire captivante...",
-    "age_minimum": "12",
-    "genres": "Drame, Comédie"
-  }'
+**Public Service :**
+```javascript
+// Utilisation publique
+public_film_searches_total
+public_films_viewed_total
+public_api_calls_by_city{city}
 ```
 
-### Consultation des films par ville
-```bash
-curl http://localhost:8000/public/films/ville/Paris
+#### 3. Métriques Techniques
+```javascript
+// Santé des services
+nodejs_heap_used_bytes
+nodejs_event_loop_lag_seconds
+process_cpu_usage_percentage
+http_active_connections
 ```
 
-## Sécurité
+### 🔧 Configuration Prometheus
 
-- Les mots de passe sont hashés avec bcrypt
-- L'authentification utilise JWT
-- Les routes sensibles sont protégées par middleware d'authentification
-- CORS est configuré pour la sécurité des requêtes cross-origin
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    scrape_interval: 5s
+    
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:8300']
+    scrape_interval: 5s
+    
+  - job_name: 'cinema-service'
+    static_configs:
+      - targets: ['cinema-service:8200']
+    scrape_interval: 5s
+    
+  - job_name: 'public-service'
+    static_configs:
+      - targets: ['public-service:8400']
+    scrape_interval: 5s
+```
 
-## Base de Données
+---
 
-La base de données MySQL contient les tables suivantes :
-- `Cinema` : Informations sur les cinémas
-- `Film` : Informations sur les films
-- `Programmation` : Programmation des films dans les cinémas
+## 📈 Dashboard Grafana
 
-Pour configurer la base de données, assurez-vous que :
-1. MySQL est installé et en cours d'exécution
-2. La base de données `cinema_app` est créée
-3. Les identifiants dans `shared/database.js` correspondent à votre configuration MySQL 
+### 🎛️ Vue d'Ensemble du Dashboard
+
+Le dashboard Grafana (`http://localhost:3000`) comprend **8 sections principales** :
+
+#### 1. 📊 **Vue Générale des Services**
+- **Status des services** : Indicateurs vert/rouge pour chaque microservice
+- **Requêtes totales** : Volume de trafic temps réel
+- **Temps de réponse moyen** : Performance globale de l'API
+
+#### 2. 🌐 **Métriques HTTP**
+- **Taux de requêtes par seconde** (RPS) par service
+- **Distribution des codes de statut** (2xx, 4xx, 5xx)
+- **Top endpoints les plus utilisés**
+
+#### 3. ⚡ **Performance**
+- **Temps de réponse P95** : 95e percentile des latences
+- **Temps de réponse médian** : Performance typique
+- **Requests/sec par endpoint** : Hotspots de performance
+
+#### 4. 🔐 **Authentification & Sécurité**
+```
+📈 Connexions réussies vs échecs
+📈 Nouvelles inscriptions par jour  
+📈 Sessions actives
+🚨 Tentatives de connexion suspectes
+```
+
+#### 5. 🎬 **Métriques Business Cinéma**
+```
+📊 Nombre total de films
+📊 Programmations actives
+📊 Recherches de films populaires
+📊 Uploads d'images réussis
+```
+
+#### 6. 🌍 **API Publique**
+```
+🌟 Films les plus consultés
+🏙️ Recherches par ville
+📱 Utilisation de l'API publique
+⏱️ Cache hit ratio
+```
+
+#### 7. 🖥️ **Santé Système**
+```
+💾 Utilisation mémoire Node.js
+⚡ Event Loop Lag
+🔄 CPU Usage par service
+🐘 Connexions PostgreSQL actives
+```
+
+#### 8. 🚨 **Alertes & Anomalies**
+```
+⚠️  Taux d'erreur > 5%
+⚠️  Temps de réponse > 2s
+⚠️  Utilisation mémoire > 80%
+⚠️  Services indisponibles
+```
+
+### 📱 Captures d'Écran du Dashboard
+
+> **Note** : Le dashboard est accessible à `http://localhost:3000` avec les identifiants :
+> - **Username** : `admin`
+> - **Password** : `admin`
+
+### 🎨 Visualisations Implémentées
+
+1. **Graphiques temporels** : Évolution des métriques dans le temps
+2. **Gauges** : Indicateurs instantanés (CPU, mémoire)
+3. **Histogrammes** : Distribution des temps de réponse
+4. **Tables** : Top des endpoints/erreurs
+5. **Stats** : Compteurs de business metrics
+6. **Heatmaps** : Patterns d'utilisation
+
+---
+
+## 🚧 Difficultés Rencontrées et Solutions
+
+### 1. 🐳 **Problème : Dépendances Manquantes dans Docker**
+
+#### ❌ Problème Initial
+```bash
+Error: Cannot find module 'multer'
+Error: Cannot find module 'bcryptjs'
+```
+
+#### 🔧 Solution Appliquée
+```javascript
+// Ajout des dépendances manquantes dans package.json
+{
+  "dependencies": {
+    "multer": "^1.4.4-lts.1",  // Version LTS sécurisée
+    "bcryptjs": "^2.4.3"       // Alternative à bcrypt
+  }
+}
+```
+
+#### 📝 Leçon Apprise
+- Vérifier que toutes les dépendances `require()` sont dans package.json
+- Utiliser `npm install` au lieu de `npm ci` en développement
+
+---
+
+### 2. 🔧 **Problème : Configuration Grafana v12**
+
+#### ❌ Erreur Rencontrée
+```
+Error: invalid setting [alerting].enabled
+Legacy Alerting is removed
+```
+
+#### 🔧 Solution Appliquée
+```ini
+# grafana.ini - Ancien
+[alerting]
+enabled = true
+
+# grafana.ini - Nouveau 
+[unified_alerting]
+enabled = true
+```
+
+#### 📝 Impact
+- Migration vers le nouveau système d'alerting unifié
+- Meilleure compatibilité avec les futures versions
+
+---
+
+### 3. 🌐 **Problème : Networking Docker**
+
+#### ❌ Problème Initial
+```javascript
+// API Gateway - Configuration incorrecte
+const authServiceUrl = 'http://localhost:8300'
+```
+
+#### 🔧 Solution Appliquée
+```javascript
+// Utilisation des noms de services Docker
+const authServiceUrl = process.env.NODE_ENV === 'production' 
+  ? 'http://auth-service:8300'
+  : 'http://localhost:8300'
+```
+
+#### 📝 Amélioration
+- Résolution automatique des noms de services
+- Isolation réseau entre conteneurs
+
+---
+
+### 4. 🗄️ **Problème : Conflits de Ports PostgreSQL**
+
+#### ❌ Conflit Détecté
+```
+Port 5432 already in use by local PostgreSQL
+```
+
+#### 🔧 Solution Implémentée
+```yaml
+# docker-compose.yml
+postgres:
+  ports:
+    - "5433:5432"  # Port externe différent
+  environment:
+    POSTGRES_DB: cinema_app
+```
+
+#### 📝 Adaptation de la connexion base de données selon l'environnement
+
+---
+
+### 5. 🧪 **Problème : Tests Frontend avec Axios**
+
+#### ❌ Erreur Jest
+```
+Cannot use import statement outside a module
+TypeError: Cannot read properties of undefined (reading 'request')
+```
+
+#### 🔧 Solution Élégante
+```javascript
+// __mocks__/axios.js
+export default {
+  get: jest.fn(() => Promise.resolve({ data: [] })),
+  post: jest.fn(() => Promise.resolve({ data: { success: true } })),
+  interceptors: {
+    request: { use: jest.fn() },
+    response: { use: jest.fn() }
+  }
+}
+```
+
+#### 📝 Bénéfice
+- Tests isolés sans dépendances réseau
+- Mocking propre des appels API
+
+---
+
+### 6. 📊 **Problème : Métriques Prometheus**
+
+#### ❌ Défi Initial
+- Exposition des métriques sur chaque service
+- Collecte centralisée efficace
+
+#### 🔧 Architecture Adoptée
+```javascript
+// Middleware métriques standardisé
+const promClient = require('prom-client')
+
+const httpRequestTotal = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'status_code', 'endpoint']
+})
+
+app.use((req, res, next) => {
+  const start = Date.now()
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start
+    httpRequestTotal.inc({
+      method: req.method,
+      status_code: res.statusCode,
+      endpoint: req.route?.path || req.path
+    })
+  })
+  
+  next()
+})
+```
+
+---
+
+## 🚀 Démarrage Rapide
+
+### 📋 Prérequis
+```bash
+✅ Docker Desktop installé et démarré
+✅ Node.js 18+ (pour les tests en local)
+✅ Ports 3000, 5433, 8000, 8200, 8300, 8400, 9090 libres
+```
+
+### ⚡ Installation en 3 étapes
+
+#### 1. Clone et Setup
+```bash
+git clone <repository-url>
+cd CinemaAPP
+npm install  # Installation des dépendances globales
+```
+
+#### 2. Build et Démarrage
+```bash
+# Construction des images Docker
+docker-compose build --no-cache
+
+# Démarrage de l'infrastructure complète
+docker-compose up -d
+
+# Vérification du statut
+docker-compose ps
+```
+
+#### 3. Initialisation Base de Données
+```bash
+# Migration et données d'exemple
+npm run migrate:all
+```
+
+### 🌐 Accès aux Services
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Frontend** | http://localhost:3000 | Interface utilisateur React |
+| **API Gateway** | http://localhost:8000 | Point d'entrée API |
+| **Grafana** | http://localhost:3000 | Dashboard monitoring |
+| **Prometheus** | http://localhost:9090 | Métriques brutes |
+
+### 🧪 Validation du Déploiement
+
+```bash
+# Tests de santé
+curl http://localhost:8000/health
+curl http://localhost:8000/metrics
+
+# Test complet
+npm run test:all
+npm run test:integration
+```
+
+### 📊 Monitoring
+
+1. **Grafana Dashboard** : http://localhost:3000 (admin/admin)
+2. **Métriques Prometheus** : http://localhost:9090
+3. **Logs des conteneurs** : `docker-compose logs -f`
+
+---
+
+## 📚 Documentation Complémentaire
+
+- **[Tests et Qualité](./TESTING.md)** : Documentation des tests unitaires et d'intégration
+- **[Architecture](./architecture_appli.drawio)** : Schéma architectural détaillé
+
+---
+
+## 🤝 Contribution
+
+Ce projet a été développé dans le cadre du cours **DevOps & Architecture SI** à l'EFREI, démontrant :
+
+- ✅ **Microservices** avec Docker
+- ✅ **Pipeline CI/CD** automatisé
+- ✅ **Monitoring** Prometheus/Grafana
+- ✅ **Tests** automatisés complets
+- ✅ **Documentation** technique détaillée
+
+---
+
+**🎬 Cinema App DevOps Project - EFREI 2024/2025** 

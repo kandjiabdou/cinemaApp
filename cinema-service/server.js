@@ -3,11 +3,45 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
-const pool = require('../shared/database');
+const pool = require('./database');
+const promClient = require('prom-client');
 
 const app = express();
 const PORT = 8200;
 const JWT_SECRET = process.env.JWT_SECRET || 'votre_secret_jwt_super_securise';
+
+// Configuration des métriques Prometheus
+const register = promClient.register;
+promClient.collectDefaultMetrics({ register });
+
+// Métriques personnalisées pour le service cinéma
+const cinemaRequestsTotal = new promClient.Counter({
+    name: 'cinema_requests_total',
+    help: 'Total number of cinema service requests',
+    labelNames: ['method', 'endpoint', 'status_code']
+});
+
+const cinemaRequestDuration = new promClient.Histogram({
+    name: 'cinema_request_duration_seconds',
+    help: 'Cinema service request duration in seconds',
+    labelNames: ['method', 'endpoint'],
+    buckets: [0.1, 0.5, 1, 2, 5]
+});
+
+const filmsTotal = new promClient.Gauge({
+    name: 'films_total',
+    help: 'Total number of films managed'
+});
+
+const programmationsTotal = new promClient.Gauge({
+    name: 'programmations_total',
+    help: 'Total number of programmations'
+});
+
+register.registerMetric(cinemaRequestsTotal);
+register.registerMetric(cinemaRequestDuration);
+register.registerMetric(filmsTotal);
+register.registerMetric(programmationsTotal);
 
 // Configuration CORS détaillée
 const corsOptions = {
@@ -33,6 +67,29 @@ const upload = multer({ storage: storage });
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
+
+// Middleware pour collecter les métriques
+app.use((req, res, next) => {
+    const start = Date.now();
+    
+    res.on('finish', () => {
+        const duration = (Date.now() - start) / 1000;
+        const endpoint = req.path;
+        
+        cinemaRequestsTotal.inc({
+            method: req.method,
+            endpoint: endpoint,
+            status_code: res.statusCode
+        });
+        
+        cinemaRequestDuration.observe({
+            method: req.method,
+            endpoint: endpoint
+        }, duration);
+    });
+    
+    next();
+});
 
 // Middleware de logging des requêtes
 app.use((req, res, next) => {
@@ -178,7 +235,7 @@ app.post('/films', authenticateToken, upload.single('poster'), async (req, res) 
         } = req.body;
 
         const cinemaid = parseInt(req.user.id, 10);
-        const poster = req.file ? `/uploads/${req.file.filename}` : '/images/default-poster.jpg';
+        const poster = req.file ? `/uploads/${req.file.filename}` : 'https://m.media-amazon.com/images/I/613ypTLZHsL._SY445_.jpg';
 
         // 1. Insérer le film
         const filmResult = await client.query(
@@ -428,6 +485,12 @@ app.delete('/programmations/:id', authenticateToken, async (req, res) => {
         console.error('Erreur lors de la suppression de la programmation:', error);
         res.status(500).json({ message: 'Erreur lors de la suppression de la programmation' });
     }
+});
+
+// Endpoint pour les métriques Prometheus
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
 });
 
 app.listen(PORT, () => {

@@ -1,0 +1,295 @@
+name: 🧪 Test Pipeline - Cinema App
+
+on:
+  workflow_dispatch:  # Permet de déclencher manuellement
+  push:
+    branches: [ develop, feature/* ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Validation basique des services
+  validate-structure:
+    name: 📋 Validate Project Structure
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check project structure
+        run: |
+          echo "🔍 Vérification de la structure du projet..."
+          
+          # Vérifier que tous les services existent
+          for service in api-gateway auth-service cinema-service public-service frontend-app; do
+            if [ -d "$service" ]; then
+              echo "✅ $service exists"
+              if [ -f "$service/package.json" ]; then
+                echo "✅ $service has package.json"
+              else
+                echo "⚠️  $service missing package.json"
+              fi
+              if [ -f "$service/Dockerfile" ]; then
+                echo "✅ $service has Dockerfile"
+              else
+                echo "⚠️  $service missing Dockerfile"
+              fi
+            else
+              echo "❌ $service directory not found"
+              exit 1
+            fi
+          done
+          
+          # Vérifier les fichiers de configuration
+          if [ -f "docker-compose.yml" ]; then
+            echo "✅ docker-compose.yml exists"
+          else
+            echo "❌ docker-compose.yml not found"
+            exit 1
+          fi
+          
+          echo "🎉 Structure validation completed!"
+
+  # Job 2: Test de build simple pour un service
+  test-build-single:
+    name: 🏗️ Test Build (API Gateway)
+    runs-on: ubuntu-latest
+    needs: validate-structure
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📦 Install dependencies
+        working-directory: ./api-gateway
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+            echo "✅ Dependencies installed"
+          else
+            echo "⚠️  No package.json found, skipping npm install"
+          fi
+
+      - name: 🐳 Test Docker build
+        run: |
+          echo "🐳 Testing Docker build for api-gateway..."
+          docker build -t test-api-gateway:latest ./api-gateway
+          echo "✅ Docker build successful!"
+
+      - name: 🧪 Test container run
+        run: |
+          echo "🧪 Testing container startup..."
+          
+          # Démarrer le container en arrière-plan
+          docker run -d --name test-api-gateway -p 3333:3000 \
+            -e NODE_ENV=test \
+            test-api-gateway:latest
+          
+          # Attendre un peu
+          sleep 10
+          
+          # Vérifier que le container fonctionne
+          if docker ps | grep test-api-gateway; then
+            echo "✅ Container is running"
+          else
+            echo "❌ Container failed to start"
+            docker logs test-api-gateway
+            exit 1
+          fi
+          
+          # Nettoyer
+          docker stop test-api-gateway
+          docker rm test-api-gateway
+
+  # Job 3: Test du workflow Prometheus/Grafana
+  test-monitoring:
+    name: 📊 Test Monitoring Stack
+    runs-on: ubuntu-latest
+    needs: validate-structure
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check monitoring configuration
+        run: |
+          echo "🔍 Vérification de la configuration monitoring..."
+          
+          if [ -d "prometheus" ]; then
+            echo "✅ Prometheus directory exists"
+            if [ -f "prometheus/prometheus.yml" ]; then
+              echo "✅ Prometheus config exists"
+            else
+              echo "⚠️  Prometheus config missing"
+            fi
+          fi
+          
+          if [ -d "grafana" ]; then
+            echo "✅ Grafana directory exists"
+          fi
+
+      - name: 🚀 Test monitoring with Docker Compose
+        run: |
+          echo "🚀 Démarrage des services de monitoring..."
+          
+          # Démarrer seulement Prometheus et Grafana
+          docker-compose up -d prometheus grafana postgres
+          
+          # Attendre que les services soient prêts
+          sleep 30
+          
+          # Tester Prometheus
+          if curl -f http://localhost:9090/-/healthy; then
+            echo "✅ Prometheus is healthy"
+          else
+            echo "⚠️  Prometheus health check failed"
+          fi
+          
+          # Tester Grafana
+          if curl -f http://localhost:3009; then
+            echo "✅ Grafana is responding"
+          else
+            echo "⚠️  Grafana not responding"
+          fi
+
+      - name: 🧹 Cleanup monitoring test
+        if: always()
+        run: |
+          docker-compose down -v
+          docker system prune -f
+
+  # Job 4: Test basique de la base de données
+  test-database:
+    name: 🗄️ Test Database Setup
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cinema_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📦 Install shared dependencies
+        working-directory: ./shared
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+            echo "✅ Shared dependencies installed"
+          else
+            echo "⚠️  No shared package.json found"
+          fi
+
+      - name: 🗄️ Test database initialization
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: cinema_db
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          echo "🗄️ Testing database initialization..."
+          
+          # Attendre que PostgreSQL soit prêt
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          
+          # Tester la connexion
+          PGPASSWORD=postgres psql -h localhost -U postgres -d cinema_db -c "SELECT version();"
+          
+          # Initialiser la base si init.sql existe
+          if [ -f "init.sql" ]; then
+            echo "📋 Running init.sql..."
+            PGPASSWORD=postgres psql -h localhost -U postgres -d cinema_db -f init.sql
+            echo "✅ Database initialized"
+          fi
+
+      - name: 🧪 Test migration script
+        working-directory: ./shared
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: cinema_db
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: |
+          if [ -f "migrate_all.js" ]; then
+            echo "🔄 Testing migration script..."
+            npm run migrate:all
+            echo "✅ Migration successful"
+          else
+            echo "⚠️  No migration script found"
+          fi
+
+  # Job 5: Rapport de test
+  test-report:
+    name: 📊 Test Report
+    runs-on: ubuntu-latest
+    needs: [validate-structure, test-build-single, test-monitoring, test-database]
+    if: always()
+    
+    steps:
+      - name: 📊 Generate Test Report
+        run: |
+          echo "📊 RAPPORT DE TEST CI/CD"
+          echo "========================"
+          echo ""
+          
+          if [[ "${{ needs.validate-structure.result }}" == "success" ]]; then
+            echo "✅ Structure validation: PASSED"
+          else
+            echo "❌ Structure validation: FAILED"
+          fi
+          
+          if [[ "${{ needs.test-build-single.result }}" == "success" ]]; then
+            echo "✅ Docker build test: PASSED"
+          else
+            echo "❌ Docker build test: FAILED"
+          fi
+          
+          if [[ "${{ needs.test-monitoring.result }}" == "success" ]]; then
+            echo "✅ Monitoring test: PASSED"
+          else
+            echo "❌ Monitoring test: FAILED"
+          fi
+          
+          if [[ "${{ needs.test-database.result }}" == "success" ]]; then
+            echo "✅ Database test: PASSED"
+          else
+            echo "❌ Database test: FAILED"
+          fi
+          
+          echo ""
+          echo "🎯 Tests terminés à $(date)"
+          
+          # Échouer si un test critique a échoué
+          if [[ "${{ needs.validate-structure.result }}" != "success" ]]; then
+            echo "💥 Échec critique: structure du projet invalide"
+            exit 1
+          fi 

@@ -2,11 +2,46 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const pool = require('../shared/database');
+const pool = require('./database');
+const promClient = require('prom-client');
 
 const app = express();
 const PORT = 8100;
 const JWT_SECRET = process.env.JWT_SECRET || 'votre_secret_jwt_super_securise';
+
+// Configuration des métriques Prometheus
+const register = promClient.register;
+promClient.collectDefaultMetrics({ register });
+
+// Métriques personnalisées pour l'authentification
+const authRequestsTotal = new promClient.Counter({
+    name: 'auth_requests_total',
+    help: 'Total number of authentication requests',
+    labelNames: ['method', 'endpoint', 'status_code']
+});
+
+const authDuration = new promClient.Histogram({
+    name: 'auth_request_duration_seconds',
+    help: 'Authentication request duration in seconds',
+    labelNames: ['method', 'endpoint'],
+    buckets: [0.1, 0.5, 1, 2, 5]
+});
+
+const authenticatedUsers = new promClient.Gauge({
+    name: 'authenticated_users',
+    help: 'Number of currently authenticated users'
+});
+
+const passwordAttempts = new promClient.Counter({
+    name: 'password_attempts_total',
+    help: 'Total number of password attempts',
+    labelNames: ['status']
+});
+
+register.registerMetric(authRequestsTotal);
+register.registerMetric(authDuration);
+register.registerMetric(authenticatedUsers);
+register.registerMetric(passwordAttempts);
 
 // Configuration CORS détaillée
 const corsOptions = {
@@ -19,6 +54,29 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Middleware pour collecter les métriques
+app.use((req, res, next) => {
+    const start = Date.now();
+    
+    res.on('finish', () => {
+        const duration = (Date.now() - start) / 1000;
+        const endpoint = req.path;
+        
+        authRequestsTotal.inc({
+            method: req.method,
+            endpoint: endpoint,
+            status_code: res.statusCode
+        });
+        
+        authDuration.observe({
+            method: req.method,
+            endpoint: endpoint
+        }, duration);
+    });
+    
+    next();
+});
 
 // Middleware de logging des requêtes
 app.use((req, res, next) => {
@@ -84,6 +142,9 @@ app.post('/register', async (req, res) => {
             { expiresIn: '24h' }
         );
 
+        // Incrémenter les métriques d'inscription
+        authenticatedUsers.inc();
+
         res.status(201).json({ 
             message: 'Cinéma inscrit avec succès', 
             token,
@@ -140,8 +201,11 @@ app.post('/login', async (req, res) => {
         const validPassword = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
 
         if (!validPassword) {
+            passwordAttempts.inc({ status: 'failed' });
             return res.status(401).json({ message: 'Identifiants invalides' });
         }
+
+        passwordAttempts.inc({ status: 'success' });
 
         // Générer le token JWT
         const token = jwt.sign(
@@ -204,6 +268,12 @@ app.post('/test-login', async (req, res) => {
         console.error('Erreur lors de la connexion de test:', error);
         res.status(500).json({ message: 'Erreur lors de la connexion de test' });
     }
+});
+
+// Endpoint pour les métriques Prometheus
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
 });
 
 app.listen(PORT, () => {
