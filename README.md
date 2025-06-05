@@ -144,22 +144,20 @@ Cette application est une **plateforme de gestion de cinéma** construite avec u
 ```yaml
 # Déclenché sur : push main/develop, PR vers main
 Jobs:
-  🧪 Tests & Linting (Matrix : 4 services)
-  🎨 Frontend Tests (React spécifique)  
-  🐳 Build & Push (Registry GitHub)
-  🔗 Integration Tests (avec PostgreSQL)
-  🚢 Deploy Production (main uniquement)
-  📢 Notification (statut final)
+  🧪 Tests & Validations (structure + dépendances)
+  🐳 Build Docker Images (tous les services)
+  🔗 Integration Tests (docker-compose basique)
+  📢 Pipeline Status (rapport final)
 ```
 
 #### **2. Workflow de Tests** (`.github/workflows/test-pipeline.yml`)
 ```yaml
 # Déclenché sur : develop, feature branches, manuel
 Jobs:
-  📋 Validate Structure (vérifications préalables)
-  🏗️ Test Build Single (validation build)
-  📊 Test Monitoring (Prometheus/Grafana)
-  🗄️ Test Database (PostgreSQL setup)
+  📋 Validate Project (structure du projet)
+  🏗️ Test Docker Build (API Gateway + Frontend)
+  📦 Test Dependencies (npm install)
+  📊 Test Report (rapport de score)
 ```
 
 ### 🎯 **Comment Voir les Pipelines en Action**
@@ -171,7 +169,7 @@ Jobs:
 
 #### 📸 Pipeline GitHub Actions en Action
 ![Pipeline GitHub Actions](./shared/pipepline_github.png)
-*Visualisation du workflow CI/CD avec les 6 jobs en cours d'exécution*
+*Visualisation du workflow CI/CD simplifié avec tests, build et intégration*
 
 #### **Déclenchement Automatique :**
 ```bash
@@ -184,28 +182,26 @@ git push origin feature/ma-feature
 # Pull Request → Tests + Build validation
 ```
 
-### 🧪 Étape 1 : Tests Automatisés
+### 🧪 Étape 1 : Tests Simplifiés
 
-#### Tests Unitaires par Service
+#### Tests de Structure et Dépendances
 ```bash
-# Tests de tous les microservices
-npm run test:all
+# Validation de la structure du projet
+- Vérification des dossiers services
+- Présence des package.json et Dockerfiles
+- Validation du docker-compose.yml
 
-# Tests individuels
-npm run test:api-gateway      # Tests du routage
-npm run test:auth-service     # Tests JWT et bcrypt
-npm run test:cinema-service   # Tests CRUD films
-npm run test:public-service   # Tests API publique
-npm run test:frontend         # Tests React components
+# Tests des dépendances
+- Frontend : npm install + build
+- Backend : npm install pour chaque service
 ```
 
-#### Tests d'Intégration
+#### Tests d'Intégration Basiques
 ```bash
-# Tests avec base de données réelle
-npm run test:integration
-
-# Tests des endpoints complets
-npm run test:e2e
+# Tests Docker Compose
+docker-compose up -d --build    # Démarrage de tous les services
+docker-compose ps               # Vérification du statut
+docker-compose down             # Nettoyage
 ```
 
 ### 🐳 Étape 2 : Containerisation
