@@ -1,0 +1,32 @@
+name: 🧪 Test Simple - Debug
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Permet déclenchement manuel
+
+jobs:
+  test-minimal:
+    name: 🚀 Test Minimal
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📋 Simple Test
+        run: |
+          echo "🎯 Test GitHub Actions"
+          echo "✅ Permissions OK"
+          echo "📅 Date: $(date)"
+          echo "🏃 Runner: ubuntu-latest"
+          echo "🎉 Pipeline fonctionnel!"
+          
+      - name: 📥 Test Checkout
+        uses: actions/checkout@v4
+        
+      - name: 📂 List Files
+        run: |
+          echo "📂 Contenu du repository:"
+          ls -la
+          
+      - name: ✅ Success
+        run: |
+          echo "🎉 SUCCÈS: GitHub Actions configuré correctement!" 
