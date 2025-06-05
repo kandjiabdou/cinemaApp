@@ -102,4 +102,81 @@
 
 .retry-button:hover {
     background-color: #b2070f;
+}
+
+/* Styles pour le select custom */
+.custom-select {
+    position: relative;
+    width: 100%;
+}
+
+.select-input {
+    width: 100%;
+    padding: 0.8rem 2.5rem 0.8rem 0.8rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: white;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: all 0.3s ease;
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.select-input:focus {
+    outline: none;
+    border-color: #e50914;
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
+    transform: translateY(-1px);
+}
+
+.select-input:hover {
+    border-color: #d1d9e0;
+    background-color: #f8f9fa;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #6c757d;
+    transition: all 0.3s ease;
+}
+
+.custom-select:hover .select-arrow {
+    color: #e50914;
+}
+
+.select-input:focus + .select-arrow {
+    color: #e50914;
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Styles pour les options */
+.select-input option {
+    padding: 0.5rem;
+    background-color: white;
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.select-input option:hover {
+    background-color: #f8f9fa;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .movies-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .ville-selector {
+        min-width: unset;
+    }
 } 

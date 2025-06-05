@@ -115,6 +115,14 @@ Cette application est une **plateforme de gestion de cinéma** construite avec u
 ```
 [Code Push] → [Tests Unitaires] → [Tests Intégration] → [Build Docker] → [Deploy] → [Monitoring]
 ```
+graph TD
+    A[Push/PR] --> B[🧪 Tests & Linting]
+    A --> C[🎨 Frontend Tests]
+    B --> D[🐳 Build & Push Images]
+    C --> D
+    D --> E[🔗 Integration Tests]
+    E --> F[🚢 Deploy Production]
+    F --> G[📢 Notification]
 
 ### 🧪 Étape 1 : Tests Automatisés
 
