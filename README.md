@@ -1,5 +1,7 @@
 # Application de Gestion de Cinéma - DevOps & Microservices
 
+[![CI/CD Pipeline](https://github.com/OWNER/REPO/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci-cd.yml)
+[![Test Pipeline](https://github.com/OWNER/REPO/actions/workflows/test-pipeline.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/test-pipeline.yml)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://github.com/OWNER/REPO/pkgs/container)
 [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus%20%2B%20Grafana-orange?logo=prometheus)](http://localhost:3000)
 [![Tests](https://img.shields.io/badge/Tests-Passing-green?logo=jest)](./TESTING.md)
@@ -85,26 +87,40 @@ Cette application est une **plateforme de gestion de cinéma** construite avec u
 
 ## 🔄 Justification des Choix CI/CD
 
-### 🎯 Choix de l'Approche : Docker + Tests Locaux
+### 🎯 Choix de l'Approche : Hybride Complète (Docker + GitHub Actions)
 
-**Décision** : Nous avons opté pour une approche **hybride** combinant containerisation Docker et tests locaux plutôt que GitHub Actions ou Jenkins.
+**Décision** : Nous avons implémenté une approche **hybride complète** combinant Docker local ET GitHub Actions pour maximiser les avantages des deux approches.
 
-#### ✅ Avantages de cette approche
+#### ✅ Notre Solution Hybride
 
-| Critère | Docker + Tests Locaux | GitHub Actions | Jenkins |
-|---------|----------------------|----------------|---------|
-| **Coût** | ✅ Gratuit | ⚠️ Limité gratuit | ❌ Infrastructure requise |
-| **Reproductibilité** | ✅ Excellente | ✅ Bonne | ⚠️ Dépend config |
-| **Développement local** | ✅ Identique à prod | ❌ Différent | ❌ Différent |
-| **Portabilité** | ✅ Multi-plateforme | ❌ Cloud only | ⚠️ Config complexe |
-| **Debugging** | ✅ Facile en local | ❌ Difficile | ⚠️ Moyen |
+| Composant | Usage | Avantages |
+|-----------|-------|-----------|
+| **🐳 Docker Local** | Développement quotidien | ✅ Rapide, reproductible, debugging facile |
+| **🚀 GitHub Actions** | CI/CD automatique | ✅ Tests automatiques, registry, déploiement |
 
-#### 🚀 Justification Technique
+#### 🏆 Comparaison avec les Alternatives
 
-1. **Environnement Uniforme** : Docker garantit que l'application fonctionne identiquement en développement, test et production
-2. **Tests Reproductibles** : Les tests s'exécutent dans le même environnement containerisé
-3. **Déploiement Simplifié** : `docker-compose up` déploie l'infrastructure complète
-4. **Monitoring Intégré** : Prometheus/Grafana inclus dans l'orchestration
+| Critère | Notre Hybride | GitHub Actions Seul | Jenkins | Docker Seul |
+|---------|---------------|---------------------|---------|-------------|
+| **Coût** | ✅ Gratuit | ⚠️ Limité gratuit | ❌ Infrastructure | ✅ Gratuit |
+| **Développement local** | ✅ Optimal | ❌ Différent | ❌ Complexe | ✅ Excellent |
+| **CI/CD automatique** | ✅ Complet | ✅ Natif | ✅ Flexible | ❌ Manuel |
+| **Debugging** | ✅ Local + Remote | ❌ Difficile | ⚠️ Moyen | ✅ Local uniquement |
+| **Reproductibilité** | ✅ Parfaite | ✅ Bonne | ⚠️ Variable | ✅ Excellente |
+
+#### 🚀 Justifications Techniques
+
+##### **Docker Local (Développement)**
+1. **Environnement Uniforme** : Identique dev/test/production
+2. **Feedback Rapide** : Tests et builds instantanés
+3. **Debugging Facile** : Accès direct aux containers
+4. **Monitoring Intégré** : Prometheus/Grafana en local
+
+##### **GitHub Actions (CI/CD)**
+1. **Automatisation Complète** : Déclenchement sur push/PR
+2. **Tests Multi-Services** : Pipeline en parallèle pour chaque microservice
+3. **Registry Intégré** : Images Docker versionnées automatiquement
+4. **Déploiement Sécurisé** : Avec tests d'intégration complets
 
 ---
 
@@ -112,17 +128,61 @@ Cette application est une **plateforme de gestion de cinéma** construite avec u
 
 ### 📊 Vue d'Ensemble du Pipeline
 
+#### 🔄 Workflow GitHub Actions
 ```
-[Code Push] → [Tests Unitaires] → [Tests Intégration] → [Build Docker] → [Deploy] → [Monitoring]
+[Code Push/PR] → [Tests Parallèles] → [Build Images] → [Registry Push] → [Integration Tests] → [Deploy]
 ```
-graph TD
-    A[Push/PR] --> B[🧪 Tests & Linting]
-    A --> C[🎨 Frontend Tests]
-    B --> D[🐳 Build & Push Images]
-    C --> D
-    D --> E[🔗 Integration Tests]
-    E --> F[🚢 Deploy Production]
-    F --> G[📢 Notification]
+
+#### 🐳 Workflow Docker Local
+```
+[Code Local] → [Tests Locaux] → [Build Local] → [Deploy Local] → [Monitoring Local]
+```
+
+### 🚀 **GitHub Actions Workflows**
+
+#### **1. Workflow Principal** (`.github/workflows/ci-cd.yml`)
+```yaml
+# Déclenché sur : push main/develop, PR vers main
+Jobs:
+  🧪 Tests & Linting (Matrix : 4 services)
+  🎨 Frontend Tests (React spécifique)  
+  🐳 Build & Push (Registry GitHub)
+  🔗 Integration Tests (avec PostgreSQL)
+  🚢 Deploy Production (main uniquement)
+  📢 Notification (statut final)
+```
+
+#### **2. Workflow de Tests** (`.github/workflows/test-pipeline.yml`)
+```yaml
+# Déclenché sur : develop, feature branches, manuel
+Jobs:
+  📋 Validate Structure (vérifications préalables)
+  🏗️ Test Build Single (validation build)
+  📊 Test Monitoring (Prometheus/Grafana)
+  🗄️ Test Database (PostgreSQL setup)
+```
+
+### 🎯 **Comment Voir les Pipelines en Action**
+
+#### **Sur GitHub.com :**
+1. **Repository** → **Actions** (onglet)
+2. Voir les workflows : **CI/CD Pipeline** et **Test Pipeline**
+3. **Badges de statut** en temps réel dans le README
+
+#### 📸 Pipeline GitHub Actions en Action
+![Pipeline GitHub Actions](./shared/pipepline_github.png)
+*Visualisation du workflow CI/CD avec les 6 jobs en cours d'exécution*
+
+#### **Déclenchement Automatique :**
+```bash
+# Push sur main/develop → Pipeline complet
+git push origin main
+
+# Push sur feature → Tests uniquement  
+git push origin feature/ma-feature
+
+# Pull Request → Tests + Build validation
+```
 
 ### 🧪 Étape 1 : Tests Automatisés
 
@@ -162,6 +222,10 @@ docker-compose build --no-cache
 # - cinemaapp-public-service:latest
 # - cinemaapp-frontend-app:latest
 ```
+
+#### 📸 Vue des Conteneurs Docker
+![Conteneurs Docker](./shared/containner_docker.png)
+*Docker Desktop montrant tous les services microservices en cours d'exécution*
 
 #### Optimisations Docker
 - **Images Alpine** : Réduction de 70% de la taille
@@ -329,13 +393,15 @@ Le dashboard Grafana (`http://localhost:3000`) comprend **8 sections principales
 
 ### 📱 Captures d'Écran du Dashboard
 
-> **Note** : Le dashboard est accessible à `http://localhost:3000` avec les identifiants :
-> - **Username** : `admin`
-> - **Password** : `admin`
+#### 📸 Dashboard Grafana en Action
+![Dashboard Grafana](./shared/grafana_capture.png)
+*Dashboard Grafana montrant les métriques des microservices en temps réel avec visualisations time series*
+
+> **Accès** : `http://localhost:3000` avec les identifiants `admin/admin`
 
 ### 🎨 Visualisations Implémentées
 
-1. **Graphiques temporels** : Évolution des métriques dans le temps
+1. **Graphiques temporels** : Évolution des métriques dans le temps (comme visible dans la capture)
 2. **Gauges** : Indicateurs instantanés (CPU, mémoire)
 3. **Histogrammes** : Distribution des temps de réponse
 4. **Tables** : Top des endpoints/erreurs
